@@ -10,6 +10,7 @@ class EvaluationQuestion extends Model
     use HasFactory;
 
     protected $fillable = [
+        'media_type_id',
         'category',
         'question_text',
         'weight',
@@ -27,5 +28,15 @@ class EvaluationQuestion extends Model
     public function answers()
     {
         return $this->hasMany(ReportAnswer::class, 'question_id');
+    }
+
+    public function scoringRules()
+    {
+        return $this->hasMany(ScoringRule::class, 'question_id');
+    }
+
+    public function mediaType()
+    {
+        return $this->belongsTo(MediaType::class, 'media_type_id');
     }
 }

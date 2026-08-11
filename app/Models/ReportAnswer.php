@@ -13,6 +13,7 @@ class ReportAnswer extends Model
         'report_id',
         'question_id',
         'answer_value',
+        'answer_type',
         'score_earned',
     ];
 
