@@ -1,0 +1,27 @@
+Opsi 1: Google OAuth (Redirect-based)
+Cara kerja:
+1. User klik "Login dengan Google"
+2. Frontend panggil GET /api/auth/google → dapatkan URL redirect
+3. User dialihkan ke halaman login Google
+4. Setelah login, Google redirect ke callback URL dengan code
+5. Backend tukar code dengan data user Google, lalu login/create akun
+Kelebihan:
+- Flow standar, aman
+- Backend sudah siap (AuthController@redirectToGoogle, handleGoogleCallback)
+Kekurangan:
+- Butuh setup Google Cloud Console (bikin OAuth client ID/secret)
+- Butuh redirect URI valid
+- Frontend harus handle redirect (agak ribet di SPA)
+
+Opsi 2: Google One Tap / Credential Login (Token-based, Rekomendasi)
+Cara kerja:
+1. Frontend render Google One Tap atau tombol "Sign in with Google"
+2. User login via popup Google, dapatkan ID token (JWT dari Google)
+3. Frontend kirim POST /api/auth/google/token dengan { credential: "google_jwt_token" }
+4. Backend verifikasi token pakai google/apiclient, ambil data user, login/create akun
+Kelebihan:
+- Tidak perlu redirect, cocok untuk SPA (React/Vue/Next.js)
+- UX lebih mulus (popup, bukan pindah halaman)
+- Frontend lebih simple — cuma kirim token ke backend
+Kekurangan:
+- Backend belum dibuat (perlu endpoint baru POST /api/auth/google/token)
