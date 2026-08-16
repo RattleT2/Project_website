@@ -34,6 +34,18 @@ POST /api/auth/register
 | `captcha` | string | Ya | Jawaban captcha |
 | `captcha_key` | string | Ya | Key dari GET /api/captcha |
 
+**Request Body:**
+```json
+{
+  "name": "Budi Santoso",
+  "email": "budi@mediabanjar.com",
+  "password": "password123",
+  "password_confirmation": "password123",
+  "captcha": "aB3dEf",
+  "captcha_key": "hash_dari_get_captcha"
+}
+```
+
 **Response 201:**
 ```json
 {
@@ -55,6 +67,20 @@ POST /api/auth/login
 | `password` | string | Ya |
 | `captcha` | string | Ya |
 | `captcha_key` | string | Ya |
+| `remember_me` | boolean | Tidak (default `false`) |
+
+**Request Body:**
+```json
+{
+  "email": "budi@mediabanjar.com",
+  "password": "password123",
+  "captcha": "aB3dEf",
+  "captcha_key": "hash_dari_get_captcha",
+  "remember_me": true
+}
+```
+
+> **Catatan `remember_me`:** jika `true`, token berlaku 30 hari (`expires_in: 2592000`). Jika `false`, token berlaku 1 jam (`expires_in: 3600`).
 
 **Response 200:**
 ```json
@@ -92,6 +118,17 @@ POST /api/auth/forgot-password
 | Field | Type | Required |
 |---|---|---|
 | `email` | string | Ya |
+| `captcha` | string | Ya |
+| `captcha_key` | string | Ya |
+
+**Request Body:**
+```json
+{
+  "email": "budi@mediabanjar.com",
+  "captcha": "aB3dEf",
+  "captcha_key": "hash_dari_get_captcha"
+}
+```
 
 #### Reset Password
 ```
@@ -103,6 +140,16 @@ POST /api/auth/reset-password
 | `email` | string | Ya |
 | `password` | string | Ya |
 | `password_confirmation` | string | Ya |
+
+**Request Body:**
+```json
+{
+  "token": "token_dari_email_reset",
+  "email": "budi@mediabanjar.com",
+  "password": "passwordbaru123",
+  "password_confirmation": "passwordbaru123"
+}
+```
 
 #### Google Login (Redirect URL)
 ```
@@ -162,6 +209,16 @@ GET /api/evaluation-questions
 ]
 ```
 
+#### List Pertanyaan Per Jenis Media
+```
+GET /api/evaluation-questions/{mediaTypeId}
+```
+**Parameter:** `mediaTypeId` = ID jenis media (1=Online, 2=Cetak, 3=Elektronik, 4=Televisi, 5=Radio)
+
+Mengembalikan pertanyaan universal + pertanyaan khusus jenis media tersebut. Gunakan endpoint ini setelah user memilih jenis media.
+
+**Response** sama seperti `GET /api/evaluation-questions`.
+
 ---
 
 ### 3. Pelapor (Reports)
@@ -188,6 +245,52 @@ Authorization: Bearer <token>
 | `answers[].answer_type` | string | Ya | `text`, `file`, atau `url` |
 | `link_url` | string | Tidak | Link URL laporan |
 | `submit` | boolean | Tidak | Jika `true`, langsung submit |
+
+**Request Body (contoh lengkap):**
+```json
+{
+  "media_type_id": 1,
+  "link_url": "https://mediabanjar.com",
+  "submit": true,
+  "answers": [
+    { "question_id": 1, "answer_value": "Media Banjar News", "answer_type": "text" },
+    { "question_id": 2, "answer_value": "Ya", "answer_type": "text" },
+    { "question_id": 3, "answer_value": "reports/questions/3/abc123.pdf", "answer_type": "file" },
+    { "question_id": 4, "answer_value": "Ada UKW Utama", "answer_type": "text" },
+    { "question_id": 5, "answer_value": "reports/questions/5/def456.pdf", "answer_type": "file" },
+    { "question_id": 6, "answer_value": "Ada + UKW", "answer_type": "text" },
+    { "question_id": 7, "answer_value": "reports/questions/7/ghi789.pdf", "answer_type": "file" },
+    { "question_id": 8, "answer_value": ">4 tahun", "answer_type": "text" },
+    { "question_id": 9, "answer_value": "reports/questions/9/jkl012.pdf", "answer_type": "file" },
+    { "question_id": 10, "answer_value": "Aktif", "answer_type": "text" },
+    { "question_id": 11, "answer_value": "https://mediabanjar.com/berita/umum", "answer_type": "url" },
+    { "question_id": 12, "answer_value": "Aktif", "answer_type": "text" },
+    { "question_id": 13, "answer_value": "https://mediabanjar.com/kab-banjar", "answer_type": "url" },
+    { "question_id": 14, "answer_value": ">20.000", "answer_type": "text" },
+    { "question_id": 15, "answer_value": "https://instagram.com/mediabanjar", "answer_type": "url" },
+    { "question_id": 16, "answer_value": "Ada", "answer_type": "text" },
+    { "question_id": 17, "answer_value": "https://mediabanjar.com/martapura", "answer_type": "url" }
+  ]
+}
+```
+
+> **Penjelasan `answer_type`:**
+> - `text` → jawaban teks biasa (nama media, pilihan Ya/Tidak, kategori, dll)
+> - `file` → path file hasil upload (dari endpoint `POST /api/reports/{reportId}/upload/{questionId}`)
+> - `url` → alamat URL lengkap (harus valid URL)
+>
+> **Nilai `answer_value` yang valid untuk pertanyaan bernilai (scoring):**
+> | Pertanyaan | Nilai Valid |
+> |---|---|
+> | Terverifikasi Dewan Pers | `Ya` / `Tidak` |
+> | Pimpinan redaksi (UKW) | `Ada UKW Utama` / `Tidak UKW Utama` |
+> | Wartawan/Biro Banjar | `Ada + UKW` / `Ada tanpa UKW` / `Tidak ada` |
+> | Usia media | `>4 tahun` / `2-4 tahun` / `<2 tahun` |
+> | Berita umum / Banjar | `Aktif` / `Tidak` |
+> | Jumlah pengikut | `>20.000` / `5.000 - 20.000` / `<5.000` |
+> | Halaman khusus/tayangan/siaran | `Ada` / `Tidak` |
+>
+> Nilai di atas harus **persis** (case-sensitive) agar skor terhitung benar.
 
 **Response 201:**
 ```json
@@ -226,6 +329,20 @@ PUT /api/reports/{id}
 Authorization: Bearer <token>
 ```
 Body sama seperti `POST` (semua field opsional).
+
+**Request Body (contoh):**
+```json
+{
+  "media_type_id": 2,
+  "link_url": "https://mediabanjar.com/baru",
+  "answers": [
+    { "question_id": 2, "answer_value": "Tidak", "answer_type": "text" },
+    { "question_id": 14, "answer_value": "5.000 - 20.000", "answer_type": "text" }
+  ]
+}
+```
+
+> Hanya `answers` yang dikirim yang akan diperbarui. Jawaban lain tetap seperti sebelumnya.
 
 #### Hapus Laporan (hanya status `pending`)
 ```
@@ -293,6 +410,13 @@ Authorization: Bearer <token>
 |---|---|---|
 | `status` | string | Ya (`aktif` / `non-aktif`) |
 
+**Request Body:**
+```json
+{
+  "status": "non-aktif"
+}
+```
+
 #### Hapus Akun Pelapor
 ```
 DELETE /api/admin/users/{id}
@@ -345,6 +469,17 @@ Authorization: Bearer <token>
 ```
 Body bisa berisi `answers` array dan/atau `media_type_id`.
 
+**Request Body (contoh):**
+```json
+{
+  "media_type_id": 1,
+  "answers": [
+    { "question_id": 2, "answer_value": "Ya", "answer_type": "text" },
+    { "question_id": 8, "answer_value": ">4 tahun", "answer_type": "text" }
+  ]
+}
+```
+
 #### Update Status Laporan
 ```
 PUT /api/admin/reports/{id}/status
@@ -353,6 +488,13 @@ Authorization: Bearer <token>
 | Field | Type | Required |
 |---|---|---|
 | `status` | string | Ya (`pending` / `proses` / `disetujui`) |
+
+**Request Body:**
+```json
+{
+  "status": "disetujui"
+}
+```
 
 #### Export PDF Single Laporan
 ```
@@ -407,3 +549,5 @@ Semua endpoint mengembalikan format error yang konsisten:
 5. **Draft**: Buat laporan tanpa `submit: true` untuk menyimpan sebagai draft. Panggil `POST /api/reports/{id}/submit` saat siap.
 6. **Edit**: Laporan hanya bisa diedit jika status masih `pending`. Begitu admin mengubah ke `proses` atau `disetujui`, laporan terkunci.
 7. **Scoring**: Skor dihitung otomatis saat submit dan saat admin verifikasi. Total score menentukan kategori (1/2/3/tidak memenuhi).
+8. **Tetap Masuk (`remember_me`)**: Kirim `remember_me: true` saat login agar token berlaku 30 hari, bukan 1 jam.
+9. **Alur upload file**: (1) Buat laporan dulu (draft), (2) upload file per pertanyaan ke `POST /api/reports/{id}/upload/{questionId}`, (3) update laporan dengan `answer_value` = path file yang dikembalikan, (4) submit laporan.
