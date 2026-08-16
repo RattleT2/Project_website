@@ -130,6 +130,17 @@ POST /api/auth/forgot-password
 }
 ```
 
+**Response 200 (selalu sama, demi keamanan):**
+```json
+{
+  "message": "Jika email terdaftar, tautan reset password akan dikirim."
+}
+```
+
+> **Penting untuk frontend:**
+> - Backend **selalu** membalas `200` dengan pesan umum (tidak membocorkan apakah email terdaftar atau tidak).
+> - Setelah request sukses, arahkan user ke halaman "Cek email Anda".
+
 #### Reset Password
 ```
 POST /api/auth/reset-password
@@ -150,6 +161,46 @@ POST /api/auth/reset-password
   "password_confirmation": "passwordbaru123"
 }
 ```
+
+**Response 200:**
+```json
+{
+  "message": "Password berhasil direset."
+}
+```
+
+---
+
+### Alur Lengkap Forgot Password
+
+```
+1. User klik "Lupa Password" di frontend
+   ↓
+2. Frontend panggil GET /api/captcha → tampilkan gambar captcha
+   ↓
+3. User isi email + jawaban captcha
+   ↓
+4. Frontend panggil POST /api/auth/forgot-password
+   { email, captcha, captcha_key }
+   ↓
+5. Backend kirim email berisi link reset ke email user
+   Link format: {APP_URL}/password/reset/{token}?email={email}
+   ↓
+6. User klik link tersebut
+   ↓
+7. Frontend tangkap `token` dan `email` dari URL,
+   tampilkan form "password baru"
+   ↓
+8. Frontend panggil POST /api/auth/reset-password
+   { token, email, password, password_confirmation }
+   ↓
+9. Backend verifikasi token & simpan password baru
+```
+
+**Catatan penting:**
+- **Token berlaku 60 menit** (dari `config/auth.php` → `expire: 60`).
+- **Token hanya bisa dipakai sekali.** Setelah reset sukses, token tidak valid lagi.
+- Saat ini link reset mengarah ke **backend** (`APP_URL/password/reset/...`). Saat integrasi frontend, kami akan ubah agar mengarah ke halaman frontend (misal `FRONTEND_URL/reset-password`). Untuk sementara, frontend tinggal baca `token` & `email` dari query string link tersebut.
 
 #### Google Login (Redirect URL)
 ```

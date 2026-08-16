@@ -89,11 +89,11 @@ class AuthController extends Controller
             'captcha' => ['required', new \App\Rules\CaptchaRule],
         ]);
 
-        $status = Password::sendResetLink($request->only('email'));
+        Password::sendResetLink($request->only('email'));
 
-        return $status === Password::RESET_LINK_SENT
-            ? response()->json(['message' => __($status)])
-            : response()->json(['message' => __($status)], 400);
+        return response()->json([
+            'message' => 'Jika email terdaftar, tautan reset password telah dikirim.',
+        ]);
     }
 
     public function resetPassword(Request $request): JsonResponse
@@ -118,8 +118,8 @@ class AuthController extends Controller
         );
 
         return $status === Password::PASSWORD_RESET
-            ? response()->json(['message' => __($status)])
-            : response()->json(['message' => __($status)], 400);
+            ? response()->json(['message' => 'Password berhasil direset.'])
+            : response()->json(['message' => 'Token reset tidak valid atau sudah kedaluwarsa.'], 400);
     }
 
     public function redirectToGoogle(): JsonResponse
