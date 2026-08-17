@@ -12,7 +12,7 @@ class CaptchaController extends Controller
         $captcha = app('captcha')->create('default', true);
 
         return response()->json([
-            'captcha_img' => $captcha['img'],
+            'captcha_img' => (string) $captcha['img'],
             'captcha_key' => $captcha['key'],
         ]);
     }
@@ -22,7 +22,7 @@ class CaptchaController extends Controller
         $captcha = app('captcha')->create('default', true);
 
         return response()->json([
-            'captcha_img' => $captcha['img'],
+            'captcha_img' => (string) $captcha['img'],
             'captcha_key' => $captcha['key'],
         ]);
     }
