@@ -12,6 +12,7 @@ class Report extends Model
     protected $fillable = [
         'user_id',
         'media_type_id',
+        'report_code',
         'file_path',
         'link_url',
         'status',
@@ -22,6 +23,20 @@ class Report extends Model
     protected $casts = [
         'submitted_at' => 'datetime',
     ];
+
+    protected $appends = [
+        'category',
+    ];
+
+    public function getCategoryAttribute(): string
+    {
+        return match (true) {
+            $this->total_score >= 68 => 'Kategori 1',
+            $this->total_score >= 40 => 'Kategori 2',
+            $this->total_score >= 20 => 'Kategori 3',
+            default => 'Tidak memenuhi kategori',
+        };
+    }
 
     /**
      * Relasi: Setiap Laporan dimiliki oleh satu User (Pelapor).

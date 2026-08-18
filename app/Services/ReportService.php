@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MediaType;
 use App\Models\Report;
 use App\Models\ReportAnswer;
 use Illuminate\Http\UploadedFile;
@@ -18,9 +19,12 @@ class ReportService
 
     public function createReport(int $userId, array $data): Report
     {
+        $mediaType = MediaType::findOrFail($data['media_type_id']);
+
         $report = Report::create([
             'user_id' => $userId,
             'media_type_id' => $data['media_type_id'],
+            'report_code' => $this->generateReportCode($mediaType),
             'link_url' => $data['link_url'] ?? null,
             'status' => 'pending',
             'total_score' => 0,
@@ -41,7 +45,13 @@ class ReportService
             throw new \Exception('Laporan tidak dapat diedit karena sudah diproses.');
         }
 
-        if (isset($data['media_type_id'])) {
+        if (isset($data['media_type_id']) && $data['media_type_id'] != $report->media_type_id) {
+            $mediaType = MediaType::findOrFail($data['media_type_id']);
+            $report->update([
+                'media_type_id' => $data['media_type_id'],
+                'report_code' => $this->generateReportCode($mediaType),
+            ]);
+        } elseif (isset($data['media_type_id'])) {
             $report->update(['media_type_id' => $data['media_type_id']]);
         }
 
@@ -80,6 +90,23 @@ class ReportService
         if ($path) {
             Storage::disk('public')->delete($path);
         }
+    }
+
+    private function generateReportCode(MediaType $mediaType): string
+    {
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $count = Report::where('media_type_id', $mediaType->id)
+                ->whereNotNull('report_code')
+                ->count();
+
+            $code = $mediaType->code . '-' . str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+
+            if (!Report::where('report_code', $code)->exists()) {
+                return $code;
+            }
+        }
+
+        throw new \Exception('Gagal membuat kode laporan.');
     }
 
     private function saveAnswers(Report $report, array $answers): void

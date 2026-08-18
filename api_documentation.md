@@ -225,8 +225,11 @@ GET /api/media-types
 **Response:**
 ```json
 [
-  { "id": 1, "name": "Online", "created_at": "...", "updated_at": "..." },
-  ...
+  { "id": 1, "name": "Online", "code": "ON", "created_at": "...", "updated_at": "..." },
+  { "id": 2, "name": "Cetak", "code": "CT", "created_at": "...", "updated_at": "..." },
+  { "id": 3, "name": "Elektronik", "code": "EL", "created_at": "...", "updated_at": "..." },
+  { "id": 4, "name": "Televisi", "code": "TV", "created_at": "...", "updated_at": "..." },
+  { "id": 5, "name": "Radio", "code": "RD", "created_at": "...", "updated_at": "..." }
 ]
 ```
 
@@ -349,10 +352,12 @@ Authorization: Bearer <token>
   "message": "Laporan berhasil dibuat.",
   "report": {
     "id": 1,
+    "report_code": "ON-001",
     "user_id": 2,
     "media_type_id": 1,
     "status": "pending",
     "total_score": 0,
+    "category": "Tidak memenuhi kategori",
     "answers": [
       {
         "id": 1,
@@ -367,6 +372,9 @@ Authorization: Bearer <token>
   }
 }
 ```
+
+> **`report_code`** dibuat otomatis saat laporan dibuat, format `{KODE_MEDIA}-{nomor urut 3 digit}`.
+> Contoh: `ON-001` (Online urutan 1), `CT-001` (Cetak urutan 1), `TV-005` (Televisi urutan 5).
 
 #### Detail Laporan
 ```
@@ -483,8 +491,49 @@ Authorization: Bearer <token>
 |---|---|---|
 | `status` | string | Filter: `pending`, `proses`, `disetujui` |
 | `media_type_id` | int | Filter jenis media |
-| `search` | string | Cari nama/email pelapor |
+| `search` | string | Cari nama/email/ID/kode laporan |
 | `page` | int | Pagination |
+| `per_page` | int | Jumlah per halaman (max 100) |
+| `date_from` | date | Filter dari tanggal (YYYY-MM-DD) |
+| `date_to` | date | Filter sampai tanggal (YYYY-MM-DD) |
+| `score_min` | int | Skor minimum |
+| `score_max` | int | Skor maksimum |
+| `sort_by` | string | `created_at`, `total_score`, `status`, `report_code` |
+| `sort_dir` | string | `asc` / `desc` |
+
+**Response (format pagination, tiap item berisi):**
+```json
+{
+  "current_page": 1,
+  "data": [
+    {
+      "id": 1,
+      "report_code": "ON-001",
+      "media_name": "Media Banjar News",
+      "user_name": "Budi Santoso",
+      "user_email": "budi@mediabanjar.com",
+      "media_type": "Online",
+      "submitted_at": "2026-08-11 10:30:00",
+      "total_score": 52,
+      "category": "Kategori 2",
+      "status": "pending"
+    }
+  ],
+  "total": 1,
+  "per_page": 20,
+  "last_page": 1
+}
+```
+
+> **Penjelasan field:**
+> - `report_code` → kode laporan (misal `ON-001`, `CT-001`)
+> - `media_name` → nama media (diambil dari jawaban pertanyaan "Nama Media")
+> - `user_name` / `user_email` → nama & email pelapor
+> - `media_type` → jenis media (Online/Cetak/Elektronik/Televisi/Radio)
+> - `submitted_at` → tanggal submit (null jika masih draft)
+> - `total_score` → penilaian/skor total
+> - `category` → kategori (dihitung otomatis: Kategori 1/2/3/Tidak memenuhi)
+> - `status` → `pending` / `proses` / `disetujui`
 
 #### Detail Laporan (Admin)
 ```
@@ -496,6 +545,7 @@ Authorization: Bearer <token>
 {
   "report": {
     "id": 1,
+    "report_code": "ON-001",
     "user": { ... },
     "media_type": { ... },
     "answers": [
@@ -507,7 +557,8 @@ Authorization: Bearer <token>
       }
     ],
     "status": "pending",
-    "total_score": 52
+    "total_score": 52,
+    "category": "Kategori 2"
   },
   "category": "Kategori 2"
 }

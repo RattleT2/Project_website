@@ -22,7 +22,7 @@ class ReportController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Report::with(['user', 'mediaType']);
+        $query = Report::with(['user', 'mediaType', 'answers.question']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -38,7 +38,9 @@ class ReportController extends Controller
                 $q->whereHas('user', function ($sq) use ($search) {
                     $sq->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
-                })->orWhere('id', 'like', "%{$search}%");
+                })
+                ->orWhere('id', 'like', "%{$search}%")
+                ->orWhere('report_code', 'like', "%{$search}%");
             });
         }
 
@@ -60,13 +62,15 @@ class ReportController extends Controller
 
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDir = $request->input('sort_dir', 'desc');
-        $allowedSort = ['created_at', 'total_score', 'status', 'id'];
+        $allowedSort = ['created_at', 'total_score', 'status', 'id', 'report_code'];
         if (in_array($sortBy, $allowedSort)) {
             $query->orderBy($sortBy, $sortDir === 'asc' ? 'asc' : 'desc');
         }
 
         $perPage = min((int) $request->input('per_page', 20), 100);
         $reports = $query->paginate($perPage);
+
+        $reports->through(fn (Report $report) => $this->formatListItem($report));
 
         return response()->json($reports);
     }
@@ -160,6 +164,25 @@ class ReportController extends Controller
             'reports_per_media' => $reportsPerMedia,
             'category_counts' => $categoryCounts,
         ]);
+    }
+
+    private function formatListItem(Report $report): array
+    {
+        $mediaNameAnswer = $report->answers
+            ->first(fn ($a) => $a->question && $a->question->question_text === 'Nama Media');
+
+        return [
+            'id' => $report->id,
+            'report_code' => $report->report_code,
+            'media_name' => $mediaNameAnswer?->answer_value,
+            'user_name' => $report->user?->name,
+            'user_email' => $report->user?->email,
+            'media_type' => $report->mediaType?->name,
+            'submitted_at' => $report->submitted_at?->format('Y-m-d H:i:s'),
+            'total_score' => $report->total_score,
+            'category' => $report->category,
+            'status' => $report->status,
+        ];
     }
 
     private function sendStatusNotification(Report $report, string $oldStatus, string $newStatus): void
