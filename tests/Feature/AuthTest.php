@@ -3,11 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Rules\CaptchaRule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Auth\Notifications\ResetPassword;
-use Mockery;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -21,11 +19,17 @@ class AuthTest extends TestCase
      */
     public function test_user_can_register()
     {
+        // Disable captcha validation for this test
+        config(['captcha.disable' => true]);
+
         $userData = [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            // Add dummy captcha fields to pass request validation
+            'captcha' => 'dummy-captcha',
+            'captcha_key' => 'dummy-key',
         ];
 
         $response = $this->postJson('/api/auth/register', $userData);
@@ -49,12 +53,21 @@ class AuthTest extends TestCase
      */
     public function test_user_can_login()
     {
+        // Disable captcha validation for this test
+        config(['captcha.disable' => true]);
+
         $user = User::factory()->create([
             'password' => bcrypt('password'),
             'status' => 'aktif',
         ]);
 
-        $loginData = ['email' => $user->email, 'password' => 'password'];
+        $loginData = [
+            'email' => $user->email, 
+            'password' => 'password',
+            // Add dummy captcha fields
+            'captcha' => 'dummy-captcha',
+            'captcha_key' => 'dummy-key',
+        ];
 
         $response = $this->postJson('/api/auth/login', $loginData);
 
@@ -73,12 +86,21 @@ class AuthTest extends TestCase
      */
     public function test_user_cannot_login_with_inactive_status()
     {
+        // Disable captcha validation for this test
+        config(['captcha.disable' => true]);
+
         $user = User::factory()->create([
             'password' => bcrypt('password'),
             'status' => 'non-aktif',
         ]);
 
-        $loginData = ['email' => $user->email, 'password' => 'password'];
+        $loginData = [
+            'email' => $user->email, 
+            'password' => 'password',
+            // Add dummy captcha fields
+            'captcha' => 'dummy-captcha',
+            'captcha_key' => 'dummy-key',
+        ];
 
         $response = $this->postJson('/api/auth/login', $loginData);
 
@@ -96,7 +118,7 @@ class AuthTest extends TestCase
         $response = $this->getJson('/api/captcha');
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['captcha', 'key']);
+            ->assertJsonStructure(['captcha_img', 'captcha_key']);
     }
 
     /**
@@ -104,29 +126,25 @@ class AuthTest extends TestCase
      *
      * @return void
      */
-    public function test_user_can_request_password_reset_link_with_valid_captcha()
+    public function test_user_can_request_password_reset_link()
     {
-        // Fake the notification system
+        // Disable captcha validation for this test
+        config(['captcha.disable' => true]);
+        
         Notification::fake();
 
-        // Create a user
         $user = User::factory()->create(['status' => 'aktif']);
 
-        // Mock the CaptchaRule to always pass
-        $this->mock(CaptchaRule::class, function ($mock) {
-            $mock->shouldReceive('passes')->andReturn(true);
-        });
-
-        // Send password reset request
         $response = $this->postJson('/api/auth/forgot-password', [
             'email' => $user->email,
-            'captcha' => 'dummy-captcha-value', // Value doesn't matter due to mocking
+            // Add dummy captcha fields to pass request validation
+            'captcha' => 'dummy-captcha',
+            'captcha_key' => 'dummy-key',
         ]);
 
         $response->assertStatus(200)
             ->assertJson(['message' => 'Jika email terdaftar, tautan reset password telah dikirim.']);
 
-        // Assert that a ResetPassword notification was sent to the user
         Notification::assertSentTo(
             $user,
             ResetPassword::class
