@@ -45,18 +45,24 @@ class UserController extends Controller
             }
         ])->findOrFail($id);
 
-        // Jika model memiliki kolom `nip`, kembalikan itu sebagai id di UI, jika tidak gunakan id numeric
-        $displayId = $user->nip ?? $user->id;
+        // Kembalikan id numeric (NIP tidak diperlukan di detail) dan sertakan
+        // jumlah laporan terverifikasi / belum terverifikasi di dua lokasi:
+        // - top-level fields untuk kompatibilitas frontend
+        // - `reports_summary` sebagai ringkasan tersarang
+        $verified = $user->verified_reports_count ?? 0;
+        $unverified = $user->unverified_reports_count ?? 0;
 
         return response()->json([
-            'id' => $displayId,
+            'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
             'status' => $user->status,
+            'verified_reports_count' => $verified,
+            'unverified_reports_count' => $unverified,
             'reports_summary' => [
-                'verified' => $user->verified_reports_count ?? 0,
-                'unverified' => $user->unverified_reports_count ?? 0,
+                'verified' => $verified,
+                'unverified' => $unverified,
             ],
         ]);
     }
