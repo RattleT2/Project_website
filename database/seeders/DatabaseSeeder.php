@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             EvaluationQuestionSeeder::class,
             ScoringRuleSeeder::class,
             AdminUserSeeder::class,
+            \Database\Seeders\DummyDataSeeder::class,
         ]);
     }
 }

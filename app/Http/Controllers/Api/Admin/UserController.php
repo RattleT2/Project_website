@@ -11,10 +11,24 @@ class UserController extends Controller
 {
     public function index(): JsonResponse
     {
-        $users = User::where('role', 'pelapor')
+        $perPage = min((int) request()->input('per_page', 20), 100);
+
+        $query = User::where('role', 'pelapor')
             ->withCount('reports')
-            ->orderBy('created_at', 'desc')
-            ->get();
+            ->orderBy('created_at', 'desc');
+
+        $users = $query->paginate($perPage);
+
+        $users->through(function (User $user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'status' => $user->status,
+                'reports_count' => $user->reports_count ?? 0,
+                'created_at' => $user->created_at?->format('Y-m-d H:i:s'),
+            ];
+        });
 
         return response()->json($users);
     }
