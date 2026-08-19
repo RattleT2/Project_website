@@ -1,0 +1,181 @@
+{
+  "info": {
+    "name": "Laporan Media Kominfo - API",
+    "_postman_id": "laporan-media-kominfo-collection",
+    "description": "Postman collection untuk API Laporan Media (auth, pelapor, admin). Gunakan variable `base_url` dan `token`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost/api", "type": "string" },
+    { "key": "token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Captcha",
+      "item": [
+        {
+          "name": "Generate Captcha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/captcha", "host": ["{{base_url}}"], "path": ["captcha"] }
+          }
+        },
+        {
+          "name": "Reload Captcha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/captcha/reload", "host": ["{{base_url}}"], "path": ["captcha","reload"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Budi Santoso\",\n  \"email\": \"budi@mediabanjar.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"captcha\": \"abcd\",\n  \"captcha_key\": \"key_from_get_captcha\"\n}" },
+            "url": { "raw": "{{base_url}}/auth/register", "host": ["{{base_url}}"], "path": ["auth","register"] }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"budi@mediabanjar.com\",\n  \"password\": \"password123\",\n  \"captcha\": \"abcd\",\n  \"captcha_key\": \"key_from_get_captcha\",\n  \"remember_me\": false\n}" },
+            "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth","login"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/auth/logout", "host": ["{{base_url}}"], "path": ["auth","logout"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth","refresh"] }
+          }
+        },
+        {
+          "name": "Me (Profile)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth","me"] }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"budi@mediabanjar.com\",\n  \"captcha\": \"abcd\",\n  \"captcha_key\": \"key_from_get_captcha\"\n}" },
+            "url": { "raw": "{{base_url}}/auth/forgot-password", "host": ["{{base_url}}"], "path": ["auth","forgot-password"] }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"token_from_email\",\n  \"email\": \"budi@mediabanjar.com\",\n  \"password\": \"newpassword123\",\n  \"password_confirmation\": \"newpassword123\"\n}" },
+            "url": { "raw": "{{base_url}}/auth/reset-password", "host": ["{{base_url}}"], "path": ["auth","reset-password"] }
+          }
+        },
+        {
+          "name": "Google Login (redirect)",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/auth/google", "host": ["{{base_url}}"], "path": ["auth","google"] } }
+        },
+        {
+          "name": "Google Callback",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/auth/google/callback?code=", "host": ["{{base_url}}"], "path": ["auth","google","callback"] } }
+        }
+      ]
+    },
+    {
+      "name": "Shared",
+      "item": [
+        { "name": "List Media Types", "request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/media-types", "host": ["{{base_url}}"], "path": ["media-types"] } } },
+        { "name": "List Evaluation Questions", "request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/evaluation-questions", "host": ["{{base_url}}"], "path": ["evaluation-questions"] } } },
+        { "name": "List Questions by MediaType", "request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/evaluation-questions/:mediaTypeId", "host": ["{{base_url}}"], "path": ["evaluation-questions",":mediaTypeId"] } } }
+      ]
+    },
+    {
+      "name": "Pelapor - Reports",
+      "item": [
+        {
+          "name": "List My Reports",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/reports", "host": ["{{base_url}}"], "path": ["reports"] } }
+        },
+        {
+          "name": "Create Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"media_type_id\": 1,\n  \"link_url\": \"https://mediabanjar.com\",\n  \"submit\": false,\n  \"answers\": []\n}" },
+            "url": { "raw": "{{base_url}}/reports", "host": ["{{base_url}}"], "path": ["reports"] }
+          }
+        },
+        {
+          "name": "Get Report Detail",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/reports/:id", "host": ["{{base_url}}"], "path": ["reports",":id"] } }
+        },
+        {
+          "name": "Update Report (pending only)",
+          "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"answers\": [] }" }, "url": { "raw": "{{base_url}}/reports/:id", "host": ["{{base_url}}"], "path": ["reports",":id"] } }
+        },
+        {
+          "name": "Delete Report (pending only)",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/reports/:id", "host": ["{{base_url}}"], "path": ["reports",":id"] } }
+        },
+        {
+          "name": "Submit Report",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/reports/:id/submit", "host": ["{{base_url}}"], "path": ["reports",":id","submit"] } }
+        },
+        {
+          "name": "Upload File for Question",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": { "mode": "formdata", "formdata": [ { "key": "file", "type": "file", "src": [] } ] },
+            "url": { "raw": "{{base_url}}/reports/:reportId/upload/:questionId", "host": ["{{base_url}}"], "path": ["reports",":reportId","upload",":questionId"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        { "name": "Admin Dashboard", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/admin/dashboard", "host": ["{{base_url}}"], "path": ["admin","dashboard"] } } },
+        { "name": "List All Reporters (Users)", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/admin/users", "host": ["{{base_url}}"], "path": ["admin","users"] } } },
+        { "name": "Get User Detail", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/admin/users/:id", "host": ["{{base_url}}"], "path": ["admin","users",":id"] } } },
+        { "name": "Update User Status", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"status\": \"non-aktif\" }" }, "url": { "raw": "{{base_url}}/admin/users/:id/status", "host": ["{{base_url}}"], "path": ["admin","users",":id","status"] } } },
+        { "name": "Delete User (pelapor)", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/admin/users/:id", "host": ["{{base_url}}"], "path": ["admin","users",":id"] } } },
+        { "name": "List Reports (admin)", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/admin/reports", "host": ["{{base_url}}"], "path": ["admin","reports"] } } },
+        { "name": "Get Report Detail (admin)", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/admin/reports/:id", "host": ["{{base_url}}"], "path": ["admin","reports",":id"] } } },
+        { "name": "Edit Report (admin)", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"answers\": [] }" }, "url": { "raw": "{{base_url}}/admin/reports/:id", "host": ["{{base_url}}"], "path": ["admin","reports",":id"] } } },
+        { "name": "Update Report Status (admin)", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"status\": \"disetujui\" }" }, "url": { "raw": "{{base_url}}/admin/reports/:id/status", "host": ["{{base_url}}"], "path": ["admin","reports",":id","status"] } } },
+        { "name": "Export Single Report PDF", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/admin/reports/:id/pdf", "host": ["{{base_url}}"], "path": ["admin","reports",":id","pdf"] } } },
+        { "name": "Export Recap PDF", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": { "raw": "{{base_url}}/admin/export-pdf", "host": ["{{base_url}}"], "path": ["admin","export-pdf"] } } }
+      ]
+    }
+  ]
+}

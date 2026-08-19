@@ -35,9 +35,30 @@ class UserController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $user = User::with('reports')->findOrFail($id);
+        // Ambil user dan hitung laporan berdasarkan status untuk ringkasan
+        $user = User::withCount([
+            'reports as verified_reports_count' => function ($query) {
+                $query->where('status', 'disetujui');
+            },
+            'reports as unverified_reports_count' => function ($query) {
+                $query->whereIn('status', ['pending', 'proses']);
+            }
+        ])->findOrFail($id);
 
-        return response()->json($user);
+        // Jika model memiliki kolom `nip`, kembalikan itu sebagai id di UI, jika tidak gunakan id numeric
+        $displayId = $user->nip ?? $user->id;
+
+        return response()->json([
+            'id' => $displayId,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+            'reports_summary' => [
+                'verified' => $user->verified_reports_count ?? 0,
+                'unverified' => $user->unverified_reports_count ?? 0,
+            ],
+        ]);
     }
 
     public function updateStatus(UpdateUserStatusRequest $request, int $id): JsonResponse
