@@ -300,22 +300,18 @@ Authorization: Bearer <token>
 | `link_url` | string | Tidak | Link URL laporan |
 | `submit` | boolean | Tidak | Jika `true`, langsung submit |
 
-**Request Body (contoh lengkap):**
+**Request Body (contoh — membuat DRAFT):**
 ```json
 {
   "media_type_id": 1,
   "link_url": "https://mediabanjar.com",
-  "submit": true,
+  "submit": false,
   "answers": [
     { "question_id": 1, "answer_value": "Media Banjar News", "answer_type": "text" },
     { "question_id": 2, "answer_value": "Ya", "answer_type": "text" },
-    { "question_id": 3, "answer_value": "reports/questions/3/abc123.pdf", "answer_type": "file" },
     { "question_id": 4, "answer_value": "Ada UKW Utama", "answer_type": "text" },
-    { "question_id": 5, "answer_value": "reports/questions/5/def456.pdf", "answer_type": "file" },
     { "question_id": 6, "answer_value": "Ada + UKW", "answer_type": "text" },
-    { "question_id": 7, "answer_value": "reports/questions/7/ghi789.pdf", "answer_type": "file" },
     { "question_id": 8, "answer_value": ">4 tahun", "answer_type": "text" },
-    { "question_id": 9, "answer_value": "reports/questions/9/jkl012.pdf", "answer_type": "file" },
     { "question_id": 10, "answer_value": "Aktif", "answer_type": "text" },
     { "question_id": 11, "answer_value": "https://mediabanjar.com/berita/umum", "answer_type": "url" },
     { "question_id": 12, "answer_value": "Aktif", "answer_type": "text" },
@@ -328,9 +324,17 @@ Authorization: Bearer <token>
 }
 ```
 
+> **⚠️ PENTING — Pertanyaan bertipe `file` TIDAK dikirim di request ini.**
+> Pertanyaan yang butuh upload (mis. Q3, Q5, Q7, Q9) di-**OMIT** (tidak dimasukkan) dulu.
+> File di-upload **terpisah setelah laporan dibuat** (lihat bagian **Alur Upload File**).
+>
+> - `submit: false` (atau tidak dikirim) → laporan menjadi **DRAFT** (`submitted_at` masih `null`, skor `0`).
+> - `submit: true` → langsung submit (hanya jika semua jawaban sudah lengkap, termasuk file yang sudah di-upload).
+> - `answer_type` **wajib** dikirim untuk setiap jawaban (`text` / `file` / `url`) — backend **tidak** mendeteksi otomatis.
+
 > **Penjelasan `answer_type`:**
 > - `text` → jawaban teks biasa (nama media, pilihan Ya/Tidak, kategori, dll)
-> - `file` → path file hasil upload (dari endpoint `POST /api/reports/{reportId}/upload/{questionId}`)
+> - `file` → **path** file hasil upload (bukan binary). Didapat dari response endpoint `POST /api/reports/{reportId}/upload/{questionId}`
 > - `url` → alamat URL lengkap (harus valid URL)
 >
 > **Nilai `answer_value` yang valid untuk pertanyaan bernilai (scoring):**
@@ -414,7 +418,9 @@ Authorization: Bearer <token>
 POST /api/reports/{id}/submit
 Authorization: Bearer <token>
 ```
-Submits the report and calculates scores.
+Mengubah status laporan menjadi terkirim: set `submitted_at` + menghitung skor & kategori.
+
+> **Catatan:** endpoint ini **POST**, bukan PUT. Backend **tidak otomatis** submit setelah upload file — frontend harus memanggil endpoint ini secara eksplisit setelah semua file ter-upload.
 
 #### Upload File per Pertanyaan
 ```
@@ -425,6 +431,60 @@ Content-Type: multipart/form-data
 | Field | Type | Required |
 |---|---|---|
 | `file` | file | Ya (PDF, max 5MB) |
+
+**Response 200:**
+```json
+{
+  "message": "File berhasil diupload.",
+  "answer": {
+    "id": 10,
+    "report_id": 1,
+    "question_id": 3,
+    "answer_value": "reports/questions/3/abc123.pdf",
+    "answer_type": "file",
+    "score_earned": 0
+  },
+  "url": "/storage/reports/questions/3/abc123.pdf"
+}
+```
+
+> Gunakan `answer_value` dari response ini jika ingin mengirim data laporan lengkap (misal saat `PUT /api/reports/{id}` atau `POST /api/reports` dengan `submit: true`).
+
+---
+
+### Alur Upload File (Langkah demi Langkah) ⭐
+
+Backend memisahkan **jawaban teks/URL** dengan **upload file**. Alurnya **bertahap** (bukan sekali kirim):
+
+```
+1. BUAT DRAFT
+   POST /api/reports
+   Body: { media_type_id, answers (HANYA text & url), submit: false }
+   → Response: { report: { id: 1, report_code: "ON-001", status: "pending" } }
+   Catatan: pertanyaan bertipe file TIDAK dikirim di sini.
+
+2. UPLOAD FILE (looping per pertanyaan yang butuh file)
+   POST /api/reports/{reportId}/upload/{questionId}
+   Content-Type: multipart/form-data
+   Body: { file: <binary pdf> }
+   → Response: { answer: { answer_value: "reports/questions/3/abc123.pdf", ... } }
+   Lakukan ini untuk Q3, Q5, Q7, Q9 (atau pertanyaan file lainnya).
+   Pertanyaan lain yang tidak perlu file → skip.
+
+3. SUBMIT
+   POST /api/reports/{reportId}/submit
+   → Set submitted_at + hitung skor & kategori
+```
+
+**Ringkasan untuk frontend:**
+| Langkah | Endpoint | Isi |
+|---|---|---|
+| 1 | `POST /api/reports` | `submit: false`, jawaban text & url saja |
+| 2 | `POST /api/reports/{id}/upload/{questionId}` | File PDF per pertanyaan (multipart) |
+| 3 | `POST /api/reports/{id}/submit` | Finalisasi + hitung skor |
+
+> **Kenapa tidak kirim file langsung di `POST /api/reports`?**
+> Karena upload membutuhkan `reportId`, dan `reportId` baru ada setelah laporan dibuat. Maka file harus di-upload setelah draft dibuat. Ini **bukan** bug — memang desainnya bertahap.
 
 ---
 
@@ -647,9 +707,9 @@ Semua endpoint mengembalikan format error yang konsisten:
 1. **Token JWT** harus disimpan di client (localStorage/cookie) dan dikirim via header `Authorization: Bearer <token>`.
 2. **Refresh token** sebelum expired (default 1 jam) dengan memanggil `POST /api/auth/refresh`.
 3. **Login Google**: Panggil `GET /api/auth/google` untuk mendapatkan URL redirect, lalu handle callback di frontend dengan mengambil token dari response.
-4. **Upload file**: Gunakan endpoint terpisah `POST /api/reports/{reportId}/upload/{questionId}` dengan `multipart/form-data`. File hanya PDF maksimal 5MB.
-5. **Draft**: Buat laporan tanpa `submit: true` untuk menyimpan sebagai draft. Panggil `POST /api/reports/{id}/submit` saat siap.
+4. **Upload file**: File di-upload **terpisah** (bukan di body `POST /api/reports`). Lihat bagian **Alur Upload File**. File hanya PDF maksimal 5MB.
+5. **Draft**: Buat laporan dengan `submit: false` (atau tanpa field submit) untuk menyimpan sebagai draft. Panggil `POST /api/reports/{id}/submit` saat semua jawaban & file sudah lengkap.
 6. **Edit**: Laporan hanya bisa diedit jika status masih `pending`. Begitu admin mengubah ke `proses` atau `disetujui`, laporan terkunci.
 7. **Scoring**: Skor dihitung otomatis saat submit dan saat admin verifikasi. Total score menentukan kategori (1/2/3/tidak memenuhi).
 8. **Tetap Masuk (`remember_me`)**: Kirim `remember_me: true` saat login agar token berlaku 30 hari, bukan 1 jam.
-9. **Alur upload file**: (1) Buat laporan dulu (draft), (2) upload file per pertanyaan ke `POST /api/reports/{id}/upload/{questionId}`, (3) update laporan dengan `answer_value` = path file yang dikembalikan, (4) submit laporan.
+9. **Alur upload file yang benar**: (1) `POST /api/reports` dengan `submit: false` & jawaban text/url saja → dapat `report.id`, (2) upload tiap file ke `POST /api/reports/{id}/upload/{questionId}` (multipart), (3) `POST /api/reports/{id}/submit` untuk finalisasi. Jangan mengirim file binary di dalam array `answers`.
