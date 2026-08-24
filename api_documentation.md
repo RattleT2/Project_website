@@ -335,21 +335,37 @@ Mengembalikan pertanyaan universal + pertanyaan khusus jenis media tersebut. Gun
 
 ### 3. Pelapor (Reports)
 
-**Endpoint melibatkan role `pelapor`** untuk operasi tulis (buat/edit/hapus/submit/upload). Khusus **melihat laporan** (`GET /api/reports` & `GET /api/reports/{id}`) juga bisa diakses **admin** (admin melihat semua laporan).
+Bagian ini dibagi supaya frontend tidak tertukar antara endpoint shared, pelapor, dan admin.
+
+#### Peta Akses Cepat
+
+| Endpoint | Admin | Pelapor | Catatan |
+|---|---|---|---|
+| `GET /api/reports` | Ya | Ya | Admin melihat semua laporan, pelapor hanya laporannya sendiri |
+| `GET /api/reports/{id}` | Ya | Ya | Admin bisa buka laporan apa pun, pelapor hanya laporan miliknya |
+| `POST /api/reports` | Tidak | Ya | Buat draft / laporan baru |
+| `PUT /api/reports/{id}` | Tidak | Ya | Edit laporan milik sendiri saat masih `pending` |
+| `DELETE /api/reports/{id}` | Tidak | Ya | Hapus laporan milik sendiri saat masih `pending` |
+| `POST /api/reports/{id}/submit` | Tidak | Ya | Finalisasi laporan |
+| `POST /api/reports/{reportId}/upload/{questionId}` | Tidak | Ya | Upload file lampiran per pertanyaan |
+| `GET /api/reports/{reportId}/attachments/{questionId}/view` | Ya | Ya | Preview PDF lampiran |
+| `GET /api/reports/{reportId}/attachments/{questionId}/download` | Ya | Ya | Download PDF lampiran |
+
+> Gunakan endpoint admin hanya di panel admin. Gunakan endpoint pelapor hanya di alur pelapor. Endpoint shared boleh dipakai keduanya hanya bila tabel di atas memang mengizinkan.
 
 #### List Laporan Saya
 ```
 GET /api/reports
 Authorization: Bearer <token>
 ```
-Bisa diakses oleh **pelapor** (menampilkan laporannya sendiri) dan **admin** (menampilkan laporan milik akunnya).
+Bisa diakses oleh **pelapor** dan **admin**. Admin melihat semua laporan, pelapor hanya melihat laporan miliknya.
 
 #### Detail Laporan
 ```
 GET /api/reports/{id}
 Authorization: Bearer <token>
 ```
-Bisa diakses oleh **pelapor** (hanya laporan miliknya) dan **admin** (semua laporan).
+Bisa diakses oleh **pelapor** dan **admin**.
 
 > **Jawaban bertipe `file`** akan menyertakan field `file_url` untuk mengakses/menampilkan file yang di-upload:
 > ```json
@@ -362,6 +378,30 @@ Bisa diakses oleh **pelapor** (hanya laporan miliknya) dan **admin** (semua lapo
 > }
 > ```
 > Gabungkan `file_url` dengan base URL untuk membuka file (contoh: `http://localhost:8000` + `/storage/...`).
+
+#### View Lampiran File
+```
+GET /api/reports/{reportId}/attachments/{questionId}/view
+Authorization: Bearer <token>
+```
+Bisa diakses oleh **admin** dan **pelapor pemilik laporan**.
+
+Endpoint ini menampilkan file PDF langsung di browser dengan `Content-Disposition: inline`.
+
+#### Download Lampiran File
+```
+GET /api/reports/{reportId}/attachments/{questionId}/download
+Authorization: Bearer <token>
+```
+Bisa diakses oleh **admin** dan **pelapor pemilik laporan**.
+
+Endpoint ini memaksa unduhan file PDF lampiran.
+
+> **Catatan frontend:**
+> - Gunakan endpoint `view` untuk preview di halaman detail.
+> - Gunakan endpoint `download` untuk tombol unduh.
+> - Jangan langsung membuka `answer_value` sebagai URL final.
+> - Format file yang diizinkan backend saat upload tetap PDF.
 
 #### Buat Laporan Baru
 ```
@@ -702,6 +742,7 @@ Authorization: Bearer <token>
 GET /api/admin/reports/{id}
 Authorization: Bearer <token>
 ```
+Endpoint ini khusus panel admin dan berbeda dari `GET /api/reports/{id}`. Gunakan endpoint ini jika frontend berada di konteks admin.
 **Response:**
 ```json
 {
@@ -822,3 +863,5 @@ Semua endpoint mengembalikan format error yang konsisten:
 7. **Scoring**: Skor dihitung otomatis saat submit dan saat admin verifikasi. Total score menentukan kategori (1/2/3/tidak memenuhi).
 8. **Tetap Masuk (`remember_me`)**: Kirim `remember_me: true` saat login agar token berlaku 30 hari, bukan 1 jam.
 9. **Alur upload file yang benar**: (1) `POST /api/reports` dengan `submit: false` & jawaban text/url saja → dapat `report.id`, (2) upload tiap file ke `POST /api/reports/{id}/upload/{questionId}` (multipart), (3) `POST /api/reports/{id}/submit` untuk finalisasi. Jangan mengirim file binary di dalam array `answers`.
+10. **Jangan tertukar konteks route**: jika frontend memakai halaman admin, gunakan endpoint admin. Jika frontend memakai halaman pelapor, gunakan endpoint pelapor. Kalau route yang dipanggil tidak sesuai role, backend akan membalas `403` dengan pesan seperti `Anda tidak memiliki akses.`
+11. **Jangan membuka path mentah sebagai route API**: untuk preview lampiran gunakan `GET /api/reports/{reportId}/attachments/{questionId}/view`, untuk download gunakan `.../download`. Jangan menambahkan prefix `/api/storage/` atau menggandakan `/storage` di frontend.
