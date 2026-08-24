@@ -37,6 +37,8 @@ Route::middleware('auth:api')->prefix('reports')->group(function () {
     // Melihat laporan: pelapor (laporan sendiri) ATAU admin (semua laporan)
     Route::get('/', [ReportController::class, 'index'])->middleware('role:pelapor,admin');
     Route::get('{id}', [ReportController::class, 'show'])->middleware('role:pelapor,admin');
+    Route::get('{reportId}/attachments/{questionId}/view', [ReportController::class, 'viewAttachment'])->middleware('role:pelapor,admin');
+    Route::get('{reportId}/attachments/{questionId}/download', [ReportController::class, 'downloadAttachment'])->middleware('role:pelapor,admin');
 
     // Operasi tulis: hanya pelapor
     Route::post('/', [ReportController::class, 'store'])->middleware('role:pelapor');

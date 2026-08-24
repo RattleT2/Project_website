@@ -7,6 +7,7 @@ use App\Http\Requests\Report\StoreReportRequest;
 use App\Http\Requests\Report\UpdateReportRequest;
 use App\Models\Report;
 use App\Models\ReportAnswer;
+use App\Models\User;
 use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -139,5 +140,55 @@ class ReportController extends Controller
             'answer' => $answer,
             'url' => Storage::url($path),
         ]);
+    }
+
+    public function viewAttachment(int $reportId, int $questionId)
+    {
+        $answer = $this->resolveAttachmentAnswer($reportId, $questionId);
+
+        return response()->file(Storage::disk('public')->path($answer->answer_value), [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.basename($answer->answer_value).'"',
+        ]);
+    }
+
+    public function downloadAttachment(int $reportId, int $questionId)
+    {
+        $answer = $this->resolveAttachmentAnswer($reportId, $questionId);
+
+        return response()->download(
+            Storage::disk('public')->path($answer->answer_value),
+            basename($answer->answer_value)
+        );
+    }
+
+    private function resolveAttachmentAnswer(int $reportId, int $questionId): ReportAnswer
+    {
+        /** @var User $user */
+        $user = auth('api')->user();
+
+        $query = ReportAnswer::with('report')
+            ->where('report_id', $reportId)
+            ->where('question_id', $questionId)
+            ->where('answer_type', 'file')
+            ->whereNotNull('answer_value');
+
+        if ($user->role === 'pelapor') {
+            $query->whereHas('report', function ($reportQuery) use ($user) {
+                $reportQuery->where('user_id', $user->id);
+            });
+        }
+
+        $answer = $query->firstOrFail();
+
+        if (!$answer instanceof ReportAnswer) {
+            abort(404, 'File lampiran tidak ditemukan.');
+        }
+
+        if (!Storage::disk('public')->exists($answer->answer_value)) {
+            abort(404, 'File lampiran tidak ditemukan.');
+        }
+
+        return $answer;
     }
 }

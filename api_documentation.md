@@ -528,6 +528,30 @@ Content-Type: multipart/form-data
 
 > Gunakan `answer_value` dari response ini jika ingin mengirim data laporan lengkap (misal saat `PUT /api/reports/{id}` atau `POST /api/reports` dengan `submit: true`).
 
+#### View Lampiran File
+```
+GET /api/reports/{reportId}/attachments/{questionId}/view
+Authorization: Bearer <token>
+```
+Bisa diakses oleh **admin** dan **pelapor pemilik laporan**.
+
+Endpoint ini menampilkan file PDF langsung di browser dengan `Content-Disposition: inline`.
+
+#### Download Lampiran File
+```
+GET /api/reports/{reportId}/attachments/{questionId}/download
+Authorization: Bearer <token>
+```
+Bisa diakses oleh **admin** dan **pelapor pemilik laporan**.
+
+Endpoint ini memaksa unduhan file PDF lampiran.
+
+> **Catatan frontend:**
+> - Gunakan endpoint `view` untuk preview di halaman detail.
+> - Gunakan endpoint `download` untuk tombol unduh.
+> - Jangan langsung membuka `answer_value` sebagai URL final.
+> - Format file yang diizinkan backend saat upload tetap PDF.
+
 ---
 
 ### Alur Upload File (Langkah demi Langkah) ⭐
