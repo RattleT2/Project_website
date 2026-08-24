@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, string $role): mixed
+    public function handle(Request $request, Closure $next, string $roles): mixed
     {
         $user = auth('api')->user();
 
@@ -20,7 +20,9 @@ class RoleMiddleware
             return response()->json(['message' => 'Akun Anda non-aktif. Hubungi admin.'], 403);
         }
 
-        if ($user->role !== $role) {
+        $allowed = array_map('trim', explode(',', $roles));
+
+        if (!in_array($user->role, $allowed)) {
             return response()->json(['message' => 'Anda tidak memiliki akses.'], 403);
         }
 

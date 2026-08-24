@@ -33,14 +33,17 @@ Route::get('media-types', [SharedController::class, 'mediaTypes']);
 Route::get('evaluation-questions', [SharedController::class, 'evaluationQuestions']);
 Route::get('evaluation-questions/{mediaTypeId}', [SharedController::class, 'questionsByMediaType']);
 
-Route::middleware(['auth:api', 'role:pelapor'])->prefix('reports')->group(function () {
-    Route::get('/', [ReportController::class, 'index']);
-    Route::post('/', [ReportController::class, 'store']);
-    Route::get('{id}', [ReportController::class, 'show']);
-    Route::put('{id}', [ReportController::class, 'update']);
-    Route::delete('{id}', [ReportController::class, 'destroy']);
-    Route::post('{id}/submit', [ReportController::class, 'submit']);
-    Route::post('{reportId}/upload/{questionId}', [ReportController::class, 'uploadFile']);
+Route::middleware('auth:api')->prefix('reports')->group(function () {
+    // Melihat laporan: pelapor (laporan sendiri) ATAU admin (semua laporan)
+    Route::get('/', [ReportController::class, 'index'])->middleware('role:pelapor,admin');
+    Route::get('{id}', [ReportController::class, 'show'])->middleware('role:pelapor,admin');
+
+    // Operasi tulis: hanya pelapor
+    Route::post('/', [ReportController::class, 'store'])->middleware('role:pelapor');
+    Route::put('{id}', [ReportController::class, 'update'])->middleware('role:pelapor');
+    Route::delete('{id}', [ReportController::class, 'destroy'])->middleware('role:pelapor');
+    Route::post('{id}/submit', [ReportController::class, 'submit'])->middleware('role:pelapor');
+    Route::post('{reportId}/upload/{questionId}', [ReportController::class, 'uploadFile'])->middleware('role:pelapor');
 });
 
 Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {

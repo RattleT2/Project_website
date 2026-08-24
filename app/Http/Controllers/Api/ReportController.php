@@ -46,9 +46,22 @@ class ReportController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $report = Report::with(['mediaType', 'answers.question.scoringRules'])
-            ->where('user_id', auth('api')->id())
-            ->findOrFail($id);
+        $user = auth('api')->user();
+        $query = Report::with(['mediaType', 'answers.question.scoringRules']);
+
+        if ($user->role === 'pelapor') {
+            $query->where('user_id', $user->id);
+        }
+
+        $report = $query->findOrFail($id);
+
+        $report->setRelation('answers', $report->answers->map(function (ReportAnswer $answer) {
+            if ($answer->answer_type === 'file' && $answer->answer_value) {
+                $answer->file_url = Storage::url($answer->answer_value);
+            }
+
+            return $answer;
+        }));
 
         return response()->json($report);
     }

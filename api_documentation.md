@@ -335,13 +335,33 @@ Mengembalikan pertanyaan universal + pertanyaan khusus jenis media tersebut. Gun
 
 ### 3. Pelapor (Reports)
 
-**Semua endpoint memerlukan role `pelapor`.**
+**Endpoint melibatkan role `pelapor`** untuk operasi tulis (buat/edit/hapus/submit/upload). Khusus **melihat laporan** (`GET /api/reports` & `GET /api/reports/{id}`) juga bisa diakses **admin** (admin melihat semua laporan).
 
 #### List Laporan Saya
 ```
 GET /api/reports
 Authorization: Bearer <token>
 ```
+Bisa diakses oleh **pelapor** (menampilkan laporannya sendiri) dan **admin** (menampilkan laporan milik akunnya).
+
+#### Detail Laporan
+```
+GET /api/reports/{id}
+Authorization: Bearer <token>
+```
+Bisa diakses oleh **pelapor** (hanya laporan miliknya) dan **admin** (semua laporan).
+
+> **Jawaban bertipe `file`** akan menyertakan field `file_url` untuk mengakses/menampilkan file yang di-upload:
+> ```json
+> {
+>   "id": 10,
+>   "question_id": 3,
+>   "answer_value": "reports/questions/3/abc123.pdf",
+>   "answer_type": "file",
+>   "file_url": "/storage/reports/questions/3/abc123.pdf"
+> }
+> ```
+> Gabungkan `file_url` dengan base URL untuk membuka file (contoh: `http://localhost:8000` + `/storage/...`).
 
 #### Buat Laporan Baru
 ```
