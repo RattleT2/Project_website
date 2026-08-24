@@ -82,6 +82,23 @@ class AuthController extends Controller
         return response()->json(auth('api')->user());
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $user = auth('api')->user();
+        $user->update([
+            'name' => $validated['name'],
+        ]);
+
+        return response()->json([
+            'message' => 'Profil berhasil diperbarui.',
+            'user' => $user->fresh(),
+        ]);
+    }
+
     public function forgotPassword(Request $request): JsonResponse
     {
         $request->validate([

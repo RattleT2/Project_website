@@ -111,6 +111,30 @@ GET /api/auth/me
 Authorization: Bearer <token>
 ```
 
+#### Update Profile
+```
+PUT /api/auth/me
+Authorization: Bearer <token>
+```
+| Field | Type | Required |
+|---|---|---|
+| `name` | string | Ya |
+
+**Request Body: **
+```json
+{
+  "name": "Budi Santoso"
+}
+```
+
+**Response 200:**
+```json
+{
+  "message": "Profil berhasil diperbarui.",
+  "user": { ... }
+}
+```
+
 #### Forgot Password
 ```
 POST /api/auth/forgot-password
