@@ -99,6 +99,30 @@ class AuthController extends Controller
         ]);
     }
 
+    public function changePassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = auth('api')->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Password saat ini tidak sesuai.',
+            ], 422);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+        ])->save();
+
+        return response()->json([
+            'message' => 'Password berhasil diperbarui.',
+        ]);
+    }
+
     public function forgotPassword(Request $request): JsonResponse
     {
         $request->validate([

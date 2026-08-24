@@ -135,6 +135,40 @@ Authorization: Bearer <token>
 }
 ```
 
+#### Change Password
+```
+PUT /api/auth/me/password
+Authorization: Bearer <token>
+```
+| Field | Type | Required |
+|---|---|---|
+| `current_password` | string | Ya |
+| `password` | string | Ya (minimal 8 karakter) |
+| `password_confirmation` | string | Ya |
+
+**Request Body:**
+```json
+{
+  "current_password": "passwordlama123",
+  "password": "passwordbaru123",
+  "password_confirmation": "passwordbaru123"
+}
+```
+
+**Response 200:**
+```json
+{
+  "message": "Password berhasil diperbarui."
+}
+```
+
+**Response 422 jika password saat ini salah:**
+```json
+{
+  "message": "Password saat ini tidak sesuai."
+}
+```
+
 #### Forgot Password
 ```
 POST /api/auth/forgot-password
