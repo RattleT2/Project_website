@@ -335,14 +335,16 @@ Mengembalikan pertanyaan universal + pertanyaan khusus jenis media tersebut. Gun
 
 ### 3. Pelapor (Reports)
 
+Catatan penting: admin tidak membuat laporan baru. Admin hanya mengelola, memverifikasi, dan melihat seluruh laporan melalui endpoint admin. Pelapor menggunakan endpoint /api/reports untuk alur pengisian laporan milik sendiri.
+
 Bagian ini dibagi supaya frontend tidak tertukar antara endpoint shared, pelapor, dan admin.
 
 #### Peta Akses Cepat
 
 | Endpoint | Admin | Pelapor | Catatan |
 |---|---|---|---|
-| `GET /api/reports` | Ya | Ya | Admin melihat semua laporan, pelapor hanya laporannya sendiri |
-| `GET /api/reports/{id}` | Ya | Ya | Admin bisa buka laporan apa pun, pelapor hanya laporan miliknya |
+| `GET /api/reports` | Tidak untuk panel admin | Ya | Khusus alur pelapor; admin panel sebaiknya memakai `/api/admin/reports` |
+| `GET /api/reports/{id}` | Tidak untuk panel admin | Ya | Khusus alur pelapor; admin panel sebaiknya memakai `/api/admin/reports/{id}` |
 | `POST /api/reports` | Tidak | Ya | Buat draft / laporan baru |
 | `PUT /api/reports/{id}` | Tidak | Ya | Edit laporan milik sendiri saat masih `pending` |
 | `DELETE /api/reports/{id}` | Tidak | Ya | Hapus laporan milik sendiri saat masih `pending` |
@@ -351,21 +353,21 @@ Bagian ini dibagi supaya frontend tidak tertukar antara endpoint shared, pelapor
 | `GET /api/reports/{reportId}/attachments/{questionId}/view` | Ya | Ya | Preview PDF lampiran |
 | `GET /api/reports/{reportId}/attachments/{questionId}/download` | Ya | Ya | Download PDF lampiran |
 
-> Gunakan endpoint admin hanya di panel admin. Gunakan endpoint pelapor hanya di alur pelapor. Endpoint shared boleh dipakai keduanya hanya bila tabel di atas memang mengizinkan.
+> Gunakan endpoint admin hanya di panel admin. Gunakan endpoint pelapor hanya di alur pelapor. Endpoint shared boleh dipakai keduanya hanya bila tabel di atas memang mengizinkan. Untuk panel admin yang membutuhkan daftar seluruh laporan, gunakan `GET /api/admin/reports` dan `GET /api/admin/reports/{id}`.
 
 #### List Laporan Saya
 ```
 GET /api/reports
 Authorization: Bearer <token>
 ```
-Bisa diakses oleh **pelapor** dan **admin**. Admin melihat semua laporan, pelapor hanya melihat laporan miliknya.
+Bisa diakses oleh **pelapor**. Untuk panel admin yang ingin melihat semua laporan, gunakan `GET /api/admin/reports`.
 
 #### Detail Laporan
 ```
 GET /api/reports/{id}
 Authorization: Bearer <token>
 ```
-Bisa diakses oleh **pelapor** dan **admin**.
+Bisa diakses oleh **pelapor**. Untuk panel admin, gunakan `GET /api/admin/reports/{id}`.
 
 > **Jawaban bertipe `file`** akan menyertakan field `file_url` untuk mengakses/menampilkan file yang di-upload:
 > ```json
