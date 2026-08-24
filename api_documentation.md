@@ -388,6 +388,9 @@ Authorization: Bearer <token>
 ```
 Bisa diakses oleh **admin** dan **pelapor pemilik laporan**.
 
+> Jika frontend berada di panel admin, route yang ekuivalen juga tersedia di:
+> `GET /api/admin/reports/{reportId}/attachments/{questionId}/view`
+
 Endpoint ini menampilkan file PDF langsung di browser dengan `Content-Disposition: inline`.
 
 #### Download Lampiran File
@@ -397,6 +400,9 @@ Authorization: Bearer <token>
 ```
 Bisa diakses oleh **admin** dan **pelapor pemilik laporan**.
 
+> Jika frontend berada di panel admin, route yang ekuivalen juga tersedia di:
+> `GET /api/admin/reports/{reportId}/attachments/{questionId}/download`
+
 Endpoint ini memaksa unduhan file PDF lampiran.
 
 > **Catatan frontend:**
@@ -404,6 +410,7 @@ Endpoint ini memaksa unduhan file PDF lampiran.
 > - Gunakan endpoint `download` untuk tombol unduh.
 > - Jangan langsung membuka `answer_value` sebagai URL final.
 > - Format file yang diizinkan backend saat upload tetap PDF.
+> - Jika halaman yang dibuka adalah panel admin, gunakan prefix `/api/admin/reports/...` untuk attachment view/download agar konsisten dengan halaman admin.
 
 #### Buat Laporan Baru
 ```

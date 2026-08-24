@@ -61,6 +61,8 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::prefix('reports')->group(function () {
         Route::get('/', [AdminReportController::class, 'index']);
         Route::get('{id}', [AdminReportController::class, 'show']);
+        Route::get('{reportId}/attachments/{questionId}/view', [ReportController::class, 'viewAttachment']);
+        Route::get('{reportId}/attachments/{questionId}/download', [ReportController::class, 'downloadAttachment']);
         Route::put('{id}', [AdminReportController::class, 'update']);
         Route::put('{id}/status', [AdminReportController::class, 'updateStatus']);
         Route::get('{id}/pdf', [ExportController::class, 'singlePdf']);
