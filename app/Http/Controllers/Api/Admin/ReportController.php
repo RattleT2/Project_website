@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateReportStatusRequest;
 use App\Models\Report;
+use App\Models\ReportAnswer;
 use App\Models\User;
 use App\Services\ScoringService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class ReportController extends Controller
 {
@@ -78,6 +80,14 @@ class ReportController extends Controller
     public function show(int $id): JsonResponse
     {
         $report = Report::with(['user', 'mediaType', 'answers.question.scoringRules'])->findOrFail($id);
+
+        $report->setRelation('answers', $report->answers->map(function (ReportAnswer $answer) {
+            if ($answer->answer_type === 'file' && $answer->answer_value) {
+                $answer->file_url = Storage::url($answer->answer_value);
+            }
+
+            return $answer;
+        }));
 
         $category = $this->scoringService->getCategory($report->total_score);
 

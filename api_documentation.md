@@ -672,6 +672,13 @@ Authorization: Bearer <token>
         "answer_value": "Ya",
         "answer_type": "text",
         "score_earned": 25
+      },
+      {
+        "question": { ... },
+        "answer_value": "reports/questions/3/abc123.pdf",
+        "answer_type": "file",
+        "file_url": "/storage/reports/questions/3/abc123.pdf",
+        "score_earned": 0
       }
     ],
     "status": "pending",
