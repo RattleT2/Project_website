@@ -185,9 +185,22 @@ class ReportController extends Controller
             abort(404, 'File lampiran tidak ditemukan.');
         }
 
-        if (!Storage::disk('public')->exists($answer->answer_value)) {
+        // Membersihkan path seandainya masih tersimpan format URL atau /storage/ di database
+        $cleanPath = $answer->answer_value;
+        if (filter_var($cleanPath, FILTER_VALIDATE_URL)) {
+            $cleanPath = parse_url($cleanPath, PHP_URL_PATH);
+        }
+        $cleanPath = ltrim($cleanPath, '/');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+        $cleanPath = ltrim($cleanPath, '/');
+
+        if (!Storage::disk('public')->exists($cleanPath)) {
             abort(404, 'File lampiran tidak ditemukan.');
         }
+
+        $answer->answer_value = $cleanPath;
 
         return $answer;
     }

@@ -109,28 +109,54 @@ class ReportService
         throw new \Exception('Gagal membuat kode laporan.');
     }
 
+    private function cleanFilePath(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            $value = parse_url($value, PHP_URL_PATH);
+        }
+
+        $value = ltrim($value, '/');
+        if (str_starts_with($value, 'storage/')) {
+            $value = substr($value, 8);
+        }
+
+        return ltrim($value, '/');
+    }
+
     private function saveAnswers(Report $report, array $answers): void
     {
         foreach ($answers as $answer) {
+            $value = $answer['answer_value'];
+            $type = $answer['answer_type'] ?? 'text';
+
+            if ($type === 'file') {
+                $value = $this->cleanFilePath($value);
+            }
+
             $existingAnswer = ReportAnswer::where('report_id', $report->id)
                 ->where('question_id', $answer['question_id'])
                 ->first();
 
             if ($existingAnswer) {
-                if ($existingAnswer->answer_type === 'file' && $existingAnswer->answer_value) {
+                // Hanya hapus file lama jika file barunya memang berbeda
+                if ($existingAnswer->answer_type === 'file' && $existingAnswer->answer_value && $existingAnswer->answer_value !== $value) {
                     $this->deleteFile($existingAnswer->answer_value);
                 }
 
                 $existingAnswer->update([
-                    'answer_value' => $answer['answer_value'],
-                    'answer_type' => $answer['answer_type'] ?? 'text',
+                    'answer_value' => $value,
+                    'answer_type' => $type,
                 ]);
             } else {
                 ReportAnswer::create([
                     'report_id' => $report->id,
                     'question_id' => $answer['question_id'],
-                    'answer_value' => $answer['answer_value'],
-                    'answer_type' => $answer['answer_type'] ?? 'text',
+                    'answer_value' => $value,
+                    'answer_type' => $type,
                     'score_earned' => 0,
                 ]);
             }
