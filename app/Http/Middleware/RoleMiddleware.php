@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, string $roles): mixed
+    public function handle(Request $request, Closure $next, ...$roles): mixed
     {
         $user = auth('api')->user();
 
@@ -16,13 +16,15 @@ class RoleMiddleware
         }
 
         if ($user->status !== 'aktif') {
-            auth('api')->logout();
+            /** @var \Tymon\JWTAuth\JWTGuard $guard */
+            $guard = auth('api');
+            $guard->logout();
             return response()->json(['message' => 'Akun Anda non-aktif. Hubungi admin.'], 403);
         }
 
-        $allowed = array_map('trim', explode(',', $roles));
+        $roles = array_map('trim', $roles);
 
-        if (!in_array($user->role, $allowed)) {
+        if (!in_array($user->role, $roles)) {
             return response()->json(['message' => 'Anda tidak memiliki akses.'], 403);
         }
 
