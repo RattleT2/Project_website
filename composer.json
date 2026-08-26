@@ -12,6 +12,7 @@
         "laravel/socialite": "*",
         "laravel/tinker": "^3.0",
         "mews/captcha": "*",
+        "phpoffice/phpspreadsheet": "^5.9",
         "tymon/jwt-auth": "*"
     },
     "require-dev": {

@@ -69,4 +69,5 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     });
 
     Route::get('export-pdf', [ExportController::class, 'recapPdf']);
+    Route::get('export-excel', [ExportController::class, 'recapExcel']);
 });

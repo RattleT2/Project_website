@@ -827,9 +827,26 @@ Returns PDF file download.
 #### Export PDF Rekapitulasi
 ```
 GET /api/admin/export-pdf
+GET /api/admin/export-pdf?media_type_id={id}
 Authorization: Bearer <token>
 ```
-Returns PDF recap of all approved reports.
+Mengunduh file PDF rekapan laporan berstatus `disetujui`. Mendukung query parameter opsional `media_type_id` untuk memfilter jenis media tertentu.
+
+#### Export Excel Rekapitulasi (.xlsx)
+```
+GET /api/admin/export-excel
+GET /api/admin/export-excel?media_type_id={id}
+Authorization: Bearer <token>
+```
+Mengunduh file spreadsheet Excel (`.xlsx`) rekapan laporan berstatus `disetujui` dengan kolom:
+- **No**
+- **Kode Media** (`report_code`, misal `ONL-001`)
+- **Nama Media**
+- **Tanggal Submit** (`dd/mm/yyyy hh:mm`)
+- **Total Score**
+- **Kategori** (Kategori 1, Kategori 2, Kategori 3, Tidak memenuhi kategori)
+
+Mendukung query parameter opsional `media_type_id` untuk memfilter jenis media tertentu (misal: hanya Media Online). Jika tidak diisi, akan merekap seluruh jenis media.
 
 ---
 

@@ -328,6 +328,7 @@ storage/
 | PUT | `/api/admin/reports/{id}/status` | JWT + admin |
 | GET | `/api/admin/reports/{id}/pdf` | JWT + admin |
 | GET | `/api/admin/export-pdf` | JWT + admin |
+| GET | `/api/admin/export-excel` | JWT + admin |
 
 ### Filter Admin Reports
 | Param | Tipe | Deskripsi |
