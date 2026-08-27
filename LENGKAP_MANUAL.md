@@ -76,9 +76,6 @@ Ini akan membuat semua tabel dan mengisi data:
 
 ## 3. Akun Default
 
-| Role | Email | Password |
-|---|---|---|
-| Admin | `admin@kominfo.go.id` | `admin123` |
 | Role | Nama | Email | Password | NIP |
 |---|---|---|---|---|
 | Admin Utama | Admin Kominfo | `admin@kominfo.go.id` | `admin123` | - |
