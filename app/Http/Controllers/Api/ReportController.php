@@ -24,10 +24,14 @@ class ReportController extends Controller
 
     public function index(): JsonResponse
     {
-        $reports = Report::with(['mediaType', 'answers.question'])
-            ->where('user_id', auth('api')->id())
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $user = auth('api')->user();
+        $query = Report::with(['mediaType', 'answers.question']);
+
+        if ($user && $user->role === 'pelapor') {
+            $query->where('user_id', $user->id);
+        }
+
+        $reports = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json($reports);
     }
