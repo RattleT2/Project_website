@@ -79,6 +79,11 @@ Ini akan membuat semua tabel dan mengisi data:
 | Role | Email | Password |
 |---|---|---|
 | Admin | `admin@kominfo.go.id` | `admin123` |
+| Role | Nama | Email | Password | NIP |
+|---|---|---|---|---|
+| Admin Utama | Admin Kominfo | `admin@kominfo.go.id` | `admin123` | - |
+| Admin Media 1 | Admin Media 1 | `admin2@kominfo.go.id` | `admin123` | `198503152010011002` |
+| Admin Media 2 | Admin Media 2 | `admin3@kominfo.go.id` | `admin123` | `198807202014022003` |
 
 > **Segera ganti password admin setelah login pertama!**
 
