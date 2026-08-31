@@ -147,7 +147,8 @@ class ExportController extends Controller
             $sheet->setCellValue("A{$rowIndex}", $index + 1);
             $sheet->setCellValue("B{$rowIndex}", $report->report_code ?? '-');
             $sheet->setCellValue("C{$rowIndex}", $mediaName);
-            $sheet->setCellValue("D{$rowIndex}", $report->submitted_at ? $report->submitted_at->format('d/m/Y H:i') : '-');
+            $submittedAt = $report->submitted_at ?? $report->created_at;
+            $sheet->setCellValue("D{$rowIndex}", $submittedAt ? $submittedAt->format('d/m/Y H:i') : '-');
             $sheet->setCellValue("E{$rowIndex}", $report->total_score);
             $sheet->setCellValue("F{$rowIndex}", $category);
 

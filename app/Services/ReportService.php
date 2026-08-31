@@ -27,6 +27,7 @@ class ReportService
             'report_code' => $this->generateReportCode($mediaType),
             'link_url' => $data['link_url'] ?? null,
             'status' => 'pending',
+            'submitted_at' => now(),
             'total_score' => 0,
         ]);
 

@@ -188,7 +188,7 @@ class ReportController extends Controller
             'user_name' => $report->user?->name,
             'user_email' => $report->user?->email,
             'media_type' => $report->mediaType?->name,
-            'submitted_at' => $report->submitted_at?->format('Y-m-d H:i:s'),
+            'submitted_at' => ($report->submitted_at ?? $report->created_at)?->format('Y-m-d H:i:s'),
             'total_score' => $report->total_score,
             'category' => $report->category,
             'status' => $report->status,
