@@ -10,7 +10,7 @@ class AkunADMIN extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'kominfomtpadmin@gmail.com'],
             [
                 'name' => 'Admin Kominfo',

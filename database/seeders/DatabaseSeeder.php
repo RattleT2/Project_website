@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             ScoringRuleSeeder::class,
             AdminUserSeeder::class,
             AdditionalAdminSeeder::class,
+            AkunADMIN::class,
             \Database\Seeders\DummyDataSeeder::class,
         ]);
     }

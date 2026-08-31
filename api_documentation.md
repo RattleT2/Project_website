@@ -260,7 +260,6 @@ POST /api/auth/reset-password
 - **Token hanya bisa dipakai sekali.** Setelah reset sukses, token tidak valid lagi.
 - Saat ini link reset mengarah ke **backend** (`APP_URL/password/reset/...`). Saat integrasi frontend, kami akan ubah agar mengarah ke halaman frontend (misal `FRONTEND_URL/reset-password`). Untuk sementara, frontend tinggal baca `token` & `email` dari query string link tersebut.
 
-#### Google Login (Redirect URL)
 ---
 
 ## Login dengan Google OAuth
@@ -277,9 +276,7 @@ POST /api/auth/reset-password
 ```
 GET /api/auth/google
 ```
-Mengembalikan URL redirect untuk Google OAuth.
 
-#### Google Callback
 **Tidak memerlukan body / header apapun.**
 
 **Response 200:**
@@ -288,7 +285,6 @@ Mengembalikan URL redirect untuk Google OAuth.
   "url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&response_type=code&scope=..."
 }
 ```
-GET /api/auth/google/callback?code=...
 
 **Response 500** (jika `GOOGLE_CLIENT_ID` belum dikonfigurasi):
 ```json
@@ -296,7 +292,6 @@ GET /api/auth/google/callback?code=...
   "message": "Gagal membuat tautan otentikasi Google. Pastikan konfigurasi Google Client ID sudah benar."
 }
 ```
-Handle callback dari Google OAuth.
 
 ---
 
