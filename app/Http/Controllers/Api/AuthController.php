@@ -165,24 +165,42 @@ class AuthController extends Controller
 
     public function redirectToGoogle(): JsonResponse
     {
-        return response()->json([
-            'url' => Socialite::driver('google')->stateless()->redirect()->getTargetUrl(),
-        ]);
+        try {
+            $url = Socialite::driver('google')->stateless()->redirect()->getTargetUrl();
+
+            return response()->json([
+                'url' => $url,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal membuat tautan otentikasi Google. Pastikan konfigurasi Google Client ID sudah benar.',
+            ], 500);
+        }
     }
 
     public function handleGoogleCallback(Request $request): JsonResponse
     {
-        $googleUser = Socialite::driver('google')->stateless()->user();
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal melakukan otentikasi dengan Google. Token/kode tidak valid atau sudah kadaluwarsa.',
+            ], 400);
+        }
 
-        $user = User::updateOrCreate(
+        $user = User::firstOrCreate(
             ['email' => $googleUser->getEmail()],
             [
-                'name' => $googleUser->getName(),
+                'name' => $googleUser->getName() ?? 'Pengguna Google',
                 'password' => Hash::make(Str::random(16)),
                 'role' => 'pelapor',
                 'status' => 'aktif',
             ]
         );
+
+        if ($user->status !== 'aktif') {
+            return response()->json(['message' => 'Akun non-aktif. Hubungi admin.'], 403);
+        }
 
         $token = auth('api')->login($user);
 
