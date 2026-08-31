@@ -17,7 +17,6 @@ class AdditionalAdminSeeder extends Seeder
             [
                 'email' => 'admin2@kominfo.go.id',
                 'name' => 'Admin Media 1',
-                'nip' => '198503152010011002',
                 'password' => Hash::make('admin123'),
                 'role' => 'admin',
                 'status' => 'aktif',
@@ -25,7 +24,6 @@ class AdditionalAdminSeeder extends Seeder
             [
                 'email' => 'admin3@kominfo.go.id',
                 'name' => 'Admin Media 2',
-                'nip' => '198807202014022003',
                 'password' => Hash::make('admin123'),
                 'role' => 'admin',
                 'status' => 'aktif',

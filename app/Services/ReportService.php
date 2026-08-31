@@ -31,12 +31,13 @@ class ReportService
         ]);
 
         $this->saveAnswers($report, $data['answers'] ?? []);
+        $this->scoringService->calculateScore($report);
 
         if (isset($data['submit']) && $data['submit']) {
             $this->submitReport($report);
         }
 
-        return $report->load('answers.question');
+        return $report->fresh()->load('answers.question');
     }
 
     public function updateReport(Report $report, array $data): Report
@@ -62,6 +63,8 @@ class ReportService
         if (isset($data['answers'])) {
             $this->saveAnswers($report, $data['answers']);
         }
+
+        $this->scoringService->calculateScore($report);
 
         if (isset($data['submit']) && $data['submit']) {
             $this->submitReport($report);

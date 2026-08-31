@@ -12,7 +12,10 @@ class ScoringService
     {
         $totalScore = 0;
 
-        foreach ($report->answers as $answer) {
+        $report->unsetRelation('answers');
+        $answers = $report->answers()->get();
+
+        foreach ($answers as $answer) {
             $score = $this->getScoreForAnswer($answer->question_id, $answer->answer_value);
             $answer->update(['score_earned' => $score]);
             $totalScore += $score;
@@ -20,7 +23,7 @@ class ScoringService
 
         $report->update(['total_score' => $totalScore]);
 
-        return $report->fresh();
+        return $report->fresh()->load('answers.question');
     }
 
     public function getScoreForAnswer(int $questionId, string $answerValue): int
