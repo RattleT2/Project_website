@@ -261,18 +261,186 @@ POST /api/auth/reset-password
 - Saat ini link reset mengarah ke **backend** (`APP_URL/password/reset/...`). Saat integrasi frontend, kami akan ubah agar mengarah ke halaman frontend (misal `FRONTEND_URL/reset-password`). Untuk sementara, frontend tinggal baca `token` & `email` dari query string link tersebut.
 
 #### Google Login (Redirect URL)
+---
+
+## Login dengan Google OAuth
+
+> **Catatan Penting:**
+> - Login Google **hanya untuk role `pelapor`** (user baru).
+> - Jika email yang digunakan untuk login Google sudah terdaftar di database sebagai **`admin`**, sistem akan tetap mengenalinya sebagai admin — role **tidak** akan ditimpa.
+> - Admin yang ingin login via Google harus memiliki email Google yang **sudah didaftarkan ke database** (via seeder) dengan `role = admin`.
+
+---
+
+### Endpoint 1 — Dapatkan URL Redirect Google
+
 ```
 GET /api/auth/google
 ```
 Mengembalikan URL redirect untuk Google OAuth.
 
 #### Google Callback
+**Tidak memerlukan body / header apapun.**
+
+**Response 200:**
+```json
+{
+  "url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&response_type=code&scope=..."
+}
 ```
 GET /api/auth/google/callback?code=...
+
+**Response 500** (jika `GOOGLE_CLIENT_ID` belum dikonfigurasi):
+```json
+{
+  "message": "Gagal membuat tautan otentikasi Google. Pastikan konfigurasi Google Client ID sudah benar."
+}
 ```
 Handle callback dari Google OAuth.
 
 ---
+
+### Endpoint 2 — Handle Callback dari Google
+
+```
+GET /api/auth/google/callback?code=AUTH_CODE&state=STATE
+```
+
+Parameter `code` dan `state` dikirim otomatis oleh Google ke URL redirect yang sudah dikonfigurasi. Frontend **tidak** perlu mengirim body apapun — cukup teruskan parameter yang ada di URL.
+
+**Response 200:**
+```json
+{
+  "message": "Login dengan Google berhasil.",
+  "user": {
+    "id": 5,
+    "name": "Budi Santoso",
+    "email": "budi@gmail.com",
+    "role": "pelapor",
+    "status": "aktif"
+  },
+  "access_token": "eyJ...",
+  "token_type": "bearer",
+  "expires_in": 3600
+}
+```
+
+**Response 400** (jika code tidak valid / expired):
+```json
+{
+  "message": "Gagal melakukan otentikasi dengan Google. Token/kode tidak valid atau sudah kadaluwarsa."
+}
+```
+
+**Response 403** (jika akun terdaftar tapi status `non-aktif`):
+```json
+{
+  "message": "Akun non-aktif. Hubungi admin."
+}
+```
+
+---
+
+### Alur Implementasi Frontend — Login dengan Google
+
+```
+LANGKAH 1 — User klik tombol "Login dengan Google"
+   ↓
+LANGKAH 2 — Frontend panggil:
+   GET /api/auth/google
+   ↓
+   Backend merespons dengan URL Google OAuth:
+   { "url": "https://accounts.google.com/o/oauth2/v2/auth?..." }
+   ↓
+LANGKAH 3 — Frontend redirect browser user ke URL tersebut:
+   window.location.href = response.url
+   ↓
+LANGKAH 4 — User login/pilih akun di halaman Google
+   ↓
+LANGKAH 5 — Google redirect ke GOOGLE_REDIRECT_URI yang sudah dikonfigurasi:
+   http://localhost:3000/api/auth/google/callback?code=AUTH_CODE&state=...
+   ↓
+LANGKAH 6 — Frontend (halaman /auth/google/callback) meneruskan
+   parameter "code" & "state" yang ada di URL ke backend:
+   GET /api/auth/google/callback?code=AUTH_CODE&state=...
+   ↓
+LANGKAH 7 — Backend memproses:
+   • Verifikasi code ke Google
+   • Ambil data profil user (nama, email)
+   • Cek apakah email sudah ada di database:
+     - Sudah ada → gunakan akun lama (role tidak berubah)
+     - Belum ada → buat akun baru dengan role = pelapor
+   • Cek status akun (aktif / non-aktif)
+   • Generate JWT token
+   ↓
+LANGKAH 8 — Backend merespons dengan access_token
+   ↓
+LANGKAH 9 — Frontend simpan token ke localStorage / sessionStorage:
+   localStorage.setItem('access_token', response.access_token)
+   ↓
+LANGKAH 10 — Frontend redirect user ke halaman yang sesuai berdasarkan role:
+   • role = "pelapor"  → /dashboard/pelapor
+   • role = "admin"    → /dashboard/admin
+```
+
+---
+
+### Konfigurasi yang Diperlukan (Backend `.env`)
+
+| Key | Nilai | Keterangan |
+|---|---|---|
+| `GOOGLE_CLIENT_ID` | `xxx.apps.googleusercontent.com` | Dari Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | `GOCSPX-xxx` | Dari Google Cloud Console |
+| `GOOGLE_REDIRECT_URI` | `http://localhost:3000/auth/google/callback` | Harus sama persis dengan yang didaftarkan di Google Cloud Console |
+
+> **⚠️ Penting:**
+> - `GOOGLE_REDIRECT_URI` di `.env` **harus identik** dengan yang terdaftar di **Google Cloud Console → APIs & Services → Credentials → Authorized Redirect URIs**.
+> - Saat production / deployment, ganti `localhost:3000` dengan domain frontend yang sebenarnya.
+
+---
+
+### Cara Mendaftarkan Admin agar Bisa Login via Google
+
+Karena login Google untuk user baru otomatis diberi `role = pelapor`, admin yang ingin login via Google harus terlebih dahulu **didaftarkan emailnya di database dengan `role = admin`**.
+
+**Langkah-langkah:**
+1. Ketahui **email Google** dari masing-masing admin (misal: `kominfo.admin@gmail.com`).
+2. Masukkan email tersebut ke seeder admin:
+
+```php
+// database/seeders/AdminUserSeeder.php
+User::firstOrCreate(
+    ['email' => 'kominfo.admin@gmail.com'],  // ← Email Google admin
+    [
+        'name'     => 'Admin Kominfo',
+        'password' => Hash::make(Str::random(16)),
+        'role'     => 'admin',
+        'status'   => 'aktif',
+    ]
+);
+```
+
+3. Jalankan seeder: `php artisan db:seed --class=AdminUserSeeder`
+4. Admin login via Google menggunakan email tersebut → sistem langsung mengenali sebagai admin.
+
+---
+
+### Perbedaan Login Biasa vs Login Google
+
+| Aspek | Login Biasa | Login Google |
+|---|---|---|
+| **Endpoint** | `POST /api/auth/login` | `GET /api/auth/google` → redirect → `GET /api/auth/google/callback` |
+| **Butuh password** | ✅ Ya | ❌ Tidak |
+| **Butuh CAPTCHA** | ✅ Ya | ❌ Tidak |
+| **Role otomatis** | Sesuai akun | `pelapor` (user baru) / sesuai akun lama |
+| **Response** | JWT token | JWT token (sama) |
+| **Token format** | Sama `Bearer eyJ...` | Sama `Bearer eyJ...` |
+
+> Setelah mendapat `access_token`, semua endpoint selanjutnya dipanggil **sama persis** baik untuk user yang login biasa maupun login Google — cukup sertakan header `Authorization: Bearer <access_token>`.
+
+---
+
+
 
 ### 2. Shared / Public
 
