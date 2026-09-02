@@ -99,7 +99,7 @@ class ReportController extends Controller
 
     public function updateStatus(UpdateReportStatusRequest $request, int $id): JsonResponse
     {
-        $report = Report::with('user')->findOrFail($id);
+        $report = Report::with(['user', 'mediaType'])->findOrFail($id);
         $oldStatus = $report->status;
 
         if ($request->status === 'proses' || $request->status === 'disetujui') {
@@ -112,7 +112,7 @@ class ReportController extends Controller
 
         return response()->json([
             'message' => 'Status laporan berhasil diperbarui.',
-            'report' => $report->load('answers.question'),
+            'report' => $report->fresh()->load('answers.question'),
             'category' => $this->scoringService->getCategory($report->total_score),
         ]);
     }
@@ -201,8 +201,11 @@ class ReportController extends Controller
             return;
         }
 
+        $report->loadMissing(['user', 'mediaType']);
+
         $user = $report->user;
         if (!$user || !$user->email) {
+            \Illuminate\Support\Facades\Log::warning("Cannot send status notification: Report #{$report->id} has no valid user email.");
             return;
         }
 
@@ -227,6 +230,8 @@ class ReportController extends Controller
                 $message->to($user->email, $user->name)
                     ->subject("Status Laporan #{$report->id} Diperbarui");
             });
+
+            \Illuminate\Support\Facades\Log::info("Status notification email sent to {$user->email} for Report #{$report->id}.");
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failed to send status notification email: ' . $e->getMessage());
         }
