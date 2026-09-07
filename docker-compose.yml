@@ -23,6 +23,8 @@ services:
       DB_DATABASE: "${DB_DATABASE:-laporan_media}"
       DB_USERNAME: "${DB_USERNAME:-laporan_user}"
       DB_PASSWORD: "${DB_PASSWORD:-laporan_secret}"
+      DB_USERNAME: "root"
+      DB_PASSWORD: "${DB_PASSWORD:-root_secret}"
       JWT_SECRET: "${JWT_SECRET}"
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
       GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
@@ -54,6 +56,7 @@ services:
       MYSQL_USER: "${DB_USERNAME:-laporan_user}"
       MYSQL_PASSWORD: "${DB_PASSWORD:-laporan_secret}"
       MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-root_secret}"
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-root_secret}"
     ports:
       - "33060:3306"
     volumes:
