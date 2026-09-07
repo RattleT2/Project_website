@@ -508,11 +508,12 @@ Bagian ini dibagi supaya frontend tidak tertukar antara endpoint shared, pelapor
 |---|---|---|---|
 | `GET /api/reports` | Tidak untuk panel admin | Ya | Khusus alur pelapor; admin panel sebaiknya memakai `/api/admin/reports` |
 | `GET /api/reports/{id}` | Tidak untuk panel admin | Ya | Khusus alur pelapor; admin panel sebaiknya memakai `/api/admin/reports/{id}` |
-| `POST /api/reports` | Tidak | Ya | Buat draft / laporan baru |
+| `POST /api/reports` | Tidak | Ya | Buat draft / submit laporan baru sekaligus |
+| `POST /api/reports/upload/{questionId}` | Tidak | Ya | Upload file lampiran form sebelum laporan dibuat |
 | `PUT /api/reports/{id}` | Tidak | Ya | Edit laporan milik sendiri saat masih `pending` |
 | `DELETE /api/reports/{id}` | Tidak | Ya | Hapus laporan milik sendiri saat masih `pending` |
-| `POST /api/reports/{id}/submit` | Tidak | Ya | Finalisasi laporan |
-| `POST /api/reports/{reportId}/upload/{questionId}` | Tidak | Ya | Upload file lampiran per pertanyaan |
+| `POST /api/reports/{id}/submit` | Tidak | Ya | Finalisasi submit laporan draft |
+| `POST /api/reports/{reportId}/upload/{questionId}` | Tidak | Ya | Upload file lampiran pada laporan draft yang sudah ada |
 | `GET /api/reports/{reportId}/attachments/{questionId}/view` | Ya | Ya | Preview PDF lampiran |
 | `GET /api/reports/{reportId}/attachments/{questionId}/download` | Ya | Ya | Download PDF lampiran |
 
@@ -708,11 +709,46 @@ Authorization: Bearer <token>
 POST /api/reports/{id}/submit
 Authorization: Bearer <token>
 ```
-Mengubah status laporan menjadi terkirim: set `submitted_at` + menghitung skor & kategori.
+Mengubah status laporan menjadi terkirim: memvalidasi semua pertanyaan wajib (`is_mandatory: true`), menyetel `submitted_at` = waktu sekarang, serta menghitung skor & kategori.
 
-> **Catatan:** endpoint ini **POST**, bukan PUT. Backend **tidak otomatis** submit setelah upload file — frontend harus memanggil endpoint ini secara eksplisit setelah semua file ter-upload.
+> **⚠️ Validasi Soal Wajib (Mandatory Questions):**
+> Jika ada pertanyaan dengan `is_mandatory: true` yang belum diisi / bernilai kosong saat di-submit, backend akan mengembalikan **HTTP 422 Unprocessable Content**:
+> ```json
+> {
+>   "message": "Beberapa pertanyaan wajib belum diisi.",
+>   "errors": {
+>     "answers": [
+>       "Pertanyaan 'Nama Media' wajib diisi.",
+>       "Pertanyaan 'Upload akta pendirian perusahaan (PDF, maks 5MB)' wajib diisi.",
+>       "Pertanyaan 'Link sosial media' wajib diisi."
+>     ]
+>   }
+> }
+> ```
 
-#### Upload File per Pertanyaan
+#### Upload File Lampiran (Sebelum Laporan Dibuat / Standalone)
+```
+POST /api/reports/upload/{questionId}
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+```
+Endpoint ini memungkinkan frontend meng-upload file lampiran (misalnya Akta Pendirian Q9 atau Sertifikat UKW) terlebih dahulu di form input sebelum laporan disubmit ke database.
+
+| Field | Type | Required | Keterangan |
+|---|---|---|---|
+| `file` | file | Ya | File PDF (maksimal 5MB) |
+
+**Response 200:**
+```json
+{
+  "message": "File berhasil diupload.",
+  "file_path": "reports/questions/9/abc123xyz.pdf",
+  "url": "/storage/reports/questions/9/abc123xyz.pdf"
+}
+```
+> Gunakan nilai `file_path` ini untuk dimasukkan ke dalam array `answers` saat memanggil `POST /api/reports` dengan `"answer_type": "file"`.
+
+#### Upload File Lampiran per Laporan (Draft Existing)
 ```
 POST /api/reports/{reportId}/upload/{questionId}
 Authorization: Bearer <token>
@@ -734,6 +770,7 @@ Content-Type: multipart/form-data
     "answer_type": "file",
     "score_earned": 0
   },
+  "file_path": "reports/questions/3/abc123.pdf",
   "url": "/storage/reports/questions/3/abc123.pdf"
 }
 ```

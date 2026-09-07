@@ -37,4 +37,3 @@ php-fpm -D
 # Start Nginx in foreground
 echo "Starting Nginx..."
 exec nginx -g 'daemon off;'
-

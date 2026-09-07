@@ -28,7 +28,7 @@ class EvaluationQuestionSeeder extends Seeder
             ['media_type_id' => null, 'category' => 'aktivitas', 'question_text' => 'Media aktif mempublikasikan berita yang berkaitan dengan wilayah, kegiatan, atau isu di Kabupaten Banjar', 'weight' => 7, 'is_mandatory' => true],
             ['media_type_id' => null, 'category' => 'aktivitas', 'question_text' => 'Link halaman berita isu khusus wilayah Kabupaten Banjar', 'weight' => 0, 'is_mandatory' => false],
             ['media_type_id' => null, 'category' => 'sosial_media', 'question_text' => 'Jumlah pengikut pada akun resmi media di platform sosial media', 'weight' => 10, 'is_mandatory' => true],
-            ['media_type_id' => null, 'category' => 'sosial_media', 'question_text' => 'Link sosial media', 'weight' => 0, 'is_mandatory' => false],
+            ['media_type_id' => null, 'category' => 'sosial_media', 'question_text' => 'Link sosial media', 'weight' => 0, 'is_mandatory' => true],
         ];
 
         foreach ($universalQuestions as $q) {

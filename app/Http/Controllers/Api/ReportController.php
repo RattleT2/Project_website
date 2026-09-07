@@ -114,6 +114,22 @@ class ReportController extends Controller
         ]);
     }
 
+    public function uploadAttachment(Request $request, int $questionId): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:pdf|max:5120',
+        ]);
+
+        $file = $request->file('file');
+        $path = $this->reportService->uploadFile($file, $questionId);
+
+        return response()->json([
+            'message' => 'File berhasil diupload.',
+            'file_path' => $path,
+            'url' => Storage::url($path),
+        ]);
+    }
+
     public function uploadFile(Request $request, int $reportId, int $questionId): JsonResponse
     {
         $request->validate([
@@ -142,6 +158,7 @@ class ReportController extends Controller
         return response()->json([
             'message' => 'File berhasil diupload.',
             'answer' => $answer,
+            'file_path' => $path,
             'url' => Storage::url($path),
         ]);
     }

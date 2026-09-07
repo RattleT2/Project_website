@@ -15,6 +15,5 @@ storage/framework/views/*
 tests
 Dockerfile
 docker-compose.yml
-docker
 *.md
 

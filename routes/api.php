@@ -42,6 +42,7 @@ Route::middleware('auth:api')->prefix('reports')->group(function () {
 
     // Operasi tulis: hanya pelapor
     Route::post('/', [ReportController::class, 'store'])->middleware('role:pelapor');
+    Route::post('upload/{questionId}', [ReportController::class, 'uploadAttachment'])->middleware('role:pelapor');
     Route::put('{id}', [ReportController::class, 'update'])->middleware('role:pelapor');
     Route::delete('{id}', [ReportController::class, 'destroy'])->middleware('role:pelapor');
     Route::post('{id}/submit', [ReportController::class, 'submit'])->middleware('role:pelapor');

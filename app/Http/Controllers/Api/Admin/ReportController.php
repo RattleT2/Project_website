@@ -24,7 +24,8 @@ class ReportController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Report::with(['user', 'mediaType', 'answers.question']);
+        $query = Report::with(['user', 'mediaType', 'answers.question'])
+            ->whereNotNull('submitted_at');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -47,11 +48,11 @@ class ReportController extends Controller
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+            $query->whereDate('submitted_at', '>=', $request->date_from);
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+            $query->whereDate('submitted_at', '<=', $request->date_to);
         }
 
         if ($request->filled('score_min')) {
@@ -62,9 +63,9 @@ class ReportController extends Controller
             $query->where('total_score', '<=', $request->score_max);
         }
 
-        $sortBy = $request->input('sort_by', 'created_at');
+        $sortBy = $request->input('sort_by', 'submitted_at');
         $sortDir = $request->input('sort_dir', 'desc');
-        $allowedSort = ['created_at', 'total_score', 'status', 'id', 'report_code'];
+        $allowedSort = ['created_at', 'submitted_at', 'total_score', 'status', 'id', 'report_code'];
         if (in_array($sortBy, $allowedSort)) {
             $query->orderBy($sortBy, $sortDir === 'asc' ? 'asc' : 'desc');
         }
@@ -148,21 +149,22 @@ class ReportController extends Controller
     public function dashboard(): JsonResponse
     {
         $totalUsers = User::where('role', 'pelapor')->count();
-        $totalReports = Report::count();
-        $pendingReports = Report::where('status', 'pending')->count();
-        $processingReports = Report::where('status', 'proses')->count();
-        $approvedReports = Report::where('status', 'disetujui')->count();
+        $totalReports = Report::whereNotNull('submitted_at')->count();
+        $pendingReports = Report::whereNotNull('submitted_at')->where('status', 'pending')->count();
+        $processingReports = Report::whereNotNull('submitted_at')->where('status', 'proses')->count();
+        $approvedReports = Report::whereNotNull('submitted_at')->where('status', 'disetujui')->count();
 
-        $reportsPerMedia = Report::selectRaw('media_type_id, count(*) as total')
+        $reportsPerMedia = Report::whereNotNull('submitted_at')
+            ->selectRaw('media_type_id, count(*) as total')
             ->with('mediaType')
             ->groupBy('media_type_id')
             ->get();
 
         $categoryCounts = [
-            'kategori_1' => Report::where('total_score', '>=', 68)->count(),
-            'kategori_2' => Report::whereBetween('total_score', [40, 67])->count(),
-            'kategori_3' => Report::whereBetween('total_score', [20, 39])->count(),
-            'tidak_memenuhi' => Report::where('total_score', '<', 20)->count(),
+            'kategori_1' => Report::whereNotNull('submitted_at')->where('total_score', '>=', 68)->count(),
+            'kategori_2' => Report::whereNotNull('submitted_at')->whereBetween('total_score', [40, 67])->count(),
+            'kategori_3' => Report::whereNotNull('submitted_at')->whereBetween('total_score', [20, 39])->count(),
+            'tidak_memenuhi' => Report::whereNotNull('submitted_at')->where('total_score', '<', 20)->count(),
         ];
 
         return response()->json([

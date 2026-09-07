@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -9,6 +7,8 @@ services:
     restart: unless-stopped
     ports:
       - "8000:80"
+    env_file:
+      - .env
     environment:
       APP_NAME: "${APP_NAME:-Laporan Media Kominfo}"
       APP_ENV: "${APP_ENV:-production}"
@@ -33,8 +33,9 @@ services:
       MAIL_USERNAME: "${MAIL_USERNAME}"
       MAIL_PASSWORD: "${MAIL_PASSWORD}"
       MAIL_ENCRYPTION: "${MAIL_ENCRYPTION:-tls}"
-      MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-noreply@kominfo.go.id}"
+      MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-kominfomtpadmin@gmail.com}"
       MAIL_FROM_NAME: "${MAIL_FROM_NAME:-Laporan Media Kominfo}"
+      CAPTCHA_DISABLE: "${CAPTCHA_DISABLE:-false}"
     volumes:
       - ./storage/app/public:/var/www/storage/app/public
       - ./storage/logs:/var/www/storage/logs

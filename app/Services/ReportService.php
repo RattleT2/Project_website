@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\EvaluationQuestion;
 use App\Models\MediaType;
 use App\Models\Report;
 use App\Models\ReportAnswer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ReportService
 {
@@ -19,7 +21,12 @@ class ReportService
 
     public function createReport(int $userId, array $data): Report
     {
+        $isSubmit = isset($data['submit']) && (bool) $data['submit'];
         $mediaType = MediaType::findOrFail($data['media_type_id']);
+
+        if ($isSubmit) {
+            $this->validateMandatoryQuestions($data['media_type_id'], $data['answers'] ?? []);
+        }
 
         $report = Report::create([
             'user_id' => $userId,
@@ -27,16 +34,12 @@ class ReportService
             'report_code' => $this->generateReportCode($mediaType),
             'link_url' => $data['link_url'] ?? null,
             'status' => 'pending',
-            'submitted_at' => now(),
+            'submitted_at' => $isSubmit ? now() : null,
             'total_score' => 0,
         ]);
 
         $this->saveAnswers($report, $data['answers'] ?? []);
         $this->scoringService->calculateScore($report);
-
-        if (isset($data['submit']) && $data['submit']) {
-            $this->submitReport($report);
-        }
 
         return $report->fresh()->load('answers.question');
     }
@@ -46,6 +49,8 @@ class ReportService
         if ($report->status !== 'pending') {
             throw new \Exception('Laporan tidak dapat diedit karena sudah diproses.');
         }
+
+        $isSubmit = isset($data['submit']) && (bool) $data['submit'];
 
         if (isset($data['media_type_id']) && $data['media_type_id'] != $report->media_type_id) {
             $mediaType = MediaType::findOrFail($data['media_type_id']);
@@ -65,10 +70,10 @@ class ReportService
             $this->saveAnswers($report, $data['answers']);
         }
 
-        $this->scoringService->calculateScore($report);
-
-        if (isset($data['submit']) && $data['submit']) {
+        if ($isSubmit) {
             $this->submitReport($report);
+        } else {
+            $this->scoringService->calculateScore($report);
         }
 
         return $report->fresh()->load('answers.question');
@@ -76,12 +81,51 @@ class ReportService
 
     public function submitReport(Report $report): Report
     {
+        $report->load('answers');
+
+        $answersArray = $report->answers->map(function ($a) {
+            return [
+                'question_id' => $a->question_id,
+                'answer_value' => $a->answer_value,
+            ];
+        })->toArray();
+
+        $this->validateMandatoryQuestions($report->media_type_id, $answersArray);
+
         $report->update([
             'status' => 'pending',
             'submitted_at' => now(),
         ]);
 
         return $this->scoringService->calculateScore($report);
+    }
+
+    public function validateMandatoryQuestions(int $mediaTypeId, array $answers): void
+    {
+        $mandatoryQuestions = EvaluationQuestion::where('is_mandatory', true)
+            ->where(function ($q) use ($mediaTypeId) {
+                $q->whereNull('media_type_id')
+                  ->orWhere('media_type_id', $mediaTypeId);
+            })
+            ->get();
+
+        $answersCollection = collect($answers);
+        $missingQuestions = [];
+
+        foreach ($mandatoryQuestions as $question) {
+            $answer = $answersCollection->firstWhere('question_id', $question->id);
+            $val = $answer ? trim((string) ($answer['answer_value'] ?? '')) : '';
+
+            if ($val === '') {
+                $missingQuestions[] = "Pertanyaan '{$question->question_text}' wajib diisi.";
+            }
+        }
+
+        if (!empty($missingQuestions)) {
+            throw ValidationException::withMessages([
+                'answers' => $missingQuestions,
+            ]);
+        }
     }
 
     public function uploadFile(UploadedFile $file, int $questionId): string

@@ -10,10 +10,10 @@ class StoreReportRequest extends FormRequest
     {
         return [
             'media_type_id' => 'required|exists:media_types,id',
-            'answers' => 'required|array',
-            'answers.*.question_id' => 'required|exists:evaluation_questions,id',
-            'answers.*.answer_value' => 'required|string',
-            'answers.*.answer_type' => 'required|in:text,file,url',
+            'answers' => 'nullable|array',
+            'answers.*.question_id' => 'required_with:answers|exists:evaluation_questions,id',
+            'answers.*.answer_value' => 'nullable|string',
+            'answers.*.answer_type' => 'nullable|in:text,file,url',
             'link_url' => 'nullable|url',
             'submit' => 'nullable|boolean',
         ];
