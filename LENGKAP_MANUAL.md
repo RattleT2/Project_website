@@ -1,233 +1,225 @@
-# Setup Manual — Laporan Media Kominfo (Backend)
+# Panduan Lengkap Manual & Deployment Produksi — Laporan Media Kominfo (Backend)
 
-Panduan lengkap dari nol sampai sistem siap digunakan.
-
----
-
-## Prasyarat
-
-| Komponen | Versi |
-|---|---|
-| PHP | >= 8.3 |
-| Composer | >= 2.x |
-| MySQL | >= 8.0 (atau MariaDB >= 10.5) |
-| Git | opsional |
-
-Ekstensi PHP yang wajib: `bcmath`, `ctype`, `fileinfo`, `json`, `mbstring`, `openssl`, `pdo_mysql`, `tokenizer`, `xml`, `gd` (untuk captcha)
+Dokumen ini berisi panduan lengkap dari tahap pengembangan hingga alur pemindahan dan deployment aplikasi ke **Server Produksi (Live VPS / Cloud Server Kominfo)**.
 
 ---
 
-## 1. Clone & Install Dependencies
+## DAFTAR ISI
+1. [Struktur & Prasyarat Sistem](#1-prasyarat-sistem)
+2. [Alur Deployment Produksi Opsi A: Menggunakan Docker (Rekomendasi Utama)](#2-opsi-a-deployment-menggunakan-docker-rekomendasi)
+3. [Alur Deployment Produksi Opsi B: Manual di Ubuntu Linux VPS](#3-opsi-b-deployment-manual-di-ubuntu-linux-vps)
+4. [Konfigurasi Domain, HTTPS (SSL), dan Google OAuth](#4-konfigurasi-domain-https-ssl-dan-google-oauth)
+5. [Daftar Akun Default & Pengelolaan Seeder](#5-daftar-akun-default--seeder)
+6. [Struktur Folder & Referensi API Endpoint](#6-referensi-api-endpoint--kategori)
+7. [Panduan Pemeliharaan, Backup & Troubleshooting](#7-pemeliharaan-backup--troubleshooting)
+
+---
+
+## 1. Prasyarat Sistem
+
+### Spesifikasi Minimal Server Produksi
+- **CPU**: 2 vCPU
+- **RAM**: Minimal 2 GB (Disarankan 4 GB)
+- **OS**: Ubuntu 22.04 LTS / 24.04 LTS (atau CentOS / AlmaLinux)
+- **Storage**: SSD minimal 25 GB
+- **Akses**: Root / SSH User dengan akses `sudo`
+
+### Kebutuhan Perangkat Lunak (Native Install)
+- **PHP**: Versi `>= 8.2` (Modul: `pdo_mysql`, `mbstring`, `exif`, `pcntl`, `bcmath`, `gd`, `zip`, `opcache`, `xml`)
+- **Web Server**: Nginx
+- **Database**: MySQL 8.0+ atau MariaDB 10.5+
+- **Composer**: Versi `>= 2.x`
+
+---
+
+## 2. OPSI A: Deployment Menggunakan Docker (Rekomendasi)
+
+Pendekatan ini paling disukai oleh tim infrastruktur/IT Kominfo karena aplikasi dan database terisolasi rapi, terhindar dari konflik versi PHP/MySQL di server, dan siap dijalankan dengan **1 baris perintah**.
+
+### Langkah 2.1 — Install Docker & Docker Compose di Server Ubuntu
+Jalankan perintah ini di terminal server VPS produksi:
 
 ```bash
-git clone <repo-url> laporan-media
+# 1. Update package manager
+sudo apt update && sudo apt upgrade -y
+
+# 2. Install Docker & Docker Compose Plugin
+sudo apt install -y docker.io docker-compose-v2 git
+
+# 3. Jalankan & aktifkan Docker service
+sudo systemctl enable --now docker
+```
+
+---
+
+### Langkah 2.2 — Clone Repository Proyek ke Server
+```bash
+# Pindah ke direktori web server
+cd /var/www
+
+# Clone proyek dari Git repository
+sudo git clone <URL_REPOSITORY_ANDA> laporan-media
 cd laporan-media
-composer install
 ```
 
 ---
 
-## 2. Konfigurasi Environment (.env)
-
-### 2.1 Copy .env.example
+### Langkah 2.3 — Buat & Konfigurasi File `.env` Produksi
 ```bash
+# Copy dari contoh template
 cp .env.example .env
+
+# Edit file .env menggunakan nano
+nano .env
 ```
 
-### 2.2 Generate Application Key
-```bash
-php artisan key:generate
-```
+Sesuaikan nilai-nilai berikut di `.env` produksi:
+```env
+APP_NAME="Laporan Media Kominfo"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://api-laporanmedia.banjarkab.go.id
+FRONTEND_URL=https://laporanmedia.banjarkab.go.id
+APP_TIMEZONE=Asia/Makassar
 
-### 2.3 Generate JWT Secret
-```bash
-php artisan jwt:secret
-```
-
-### 2.4 Konfigurasi Database
-Buka `.env`, isi kredensial database:
-
-```
+# Kredensial Database Docker Internal
 DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
+DB_HOST=db
 DB_PORT=3306
 DB_DATABASE=laporan_media
-DB_USERNAME=root
-DB_PASSWORD=password_anda
-```
+DB_USERNAME=laporan_user
+DB_PASSWORD=Password_Sangat_Aman_123!
 
-> **Pastikan database sudah dibuat** di MySQL:
-> ```sql
-> CREATE DATABASE laporan_media CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-> ```
+# JWT Auth
+JWT_SECRET=IsiDenganStringJWT_Secret_32_Char_Lebih
 
-### 2.5 Jalankan Migrasi + Seeder
-```bash
-php artisan migrate --seed
-```
+# Google OAuth Production
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxx
+GOOGLE_REDIRECT_URI=https://laporanmedia.banjarkab.go.id/api/auth/google/callback
 
-Ini akan membuat semua tabel dan mengisi data:
-- **5 jenis media**: Online, Cetak, Elektronik, Televisi, Radio
-- **~21 pertanyaan evaluasi** (universal + per jenis media)
-- **Aturan skor** untuk setiap pertanyaan
-- **1 akun admin** (lihat bagian 3)
-
----
-
-## 3. Akun Default
-
-| Role | Nama | Email | Password | NIP |
-|---|---|---|---|---|
-| Admin Utama | Admin Kominfo | `admin@kominfo.go.id` | `admin123` | - |
-| Admin Media 1 | Admin Media 1 | `admin2@kominfo.go.id` | `admin123` | `198503152010011002` |
-| Admin Media 2 | Admin Media 2 | `admin3@kominfo.go.id` | `admin123` | `198807202014022003` |
-
-> **Segera ganti password admin setelah login pertama!**
-
----
-
-## 4. Storage Link (Upload File)
-
-```bash
-php artisan storage:link
-```
-
-File PDF yang diupload akan disimpan di `storage/app/public/reports/questions/{id}/`.
-
----
-
-## 5. Google Login (Opsional)
-
-### 5.1 Buat OAuth Credentials
-1. Buka [Google Cloud Console](https://console.cloud.google.com)
-2. Pilih project Anda → **APIs & Services > Credentials**
-3. **Create Credentials > OAuth client ID**
-4. Pilih **Web application**
-5. Isi:
-   - **Name**: `Laporan Media Kominfo`
-   - **Authorized redirect URIs**: `http://localhost:8000/api/auth/google/callback`
-6. Copy **Client ID** dan **Client Secret**
-
-### 5.2 Isi di .env
-```
-GOOGLE_CLIENT_ID=123456789-xxxxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxx
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
-```
-
-> **Production**: ganti URI redirect dengan domain production.
-
----
-
-## 6. Email (Forgot Password + Notifikasi Status)
-
-### 6.1 Pilihan 1: Development (Mailtrap, gratis)
-1. Daftar di [mailtrap.io](https://mailtrap.io)
-2. Masuk ke **Email Testing > Inboxes > My Inbox**
-3. Pilih **Integrations > Laravel 9+**
-4. Copy konfigurasi ke `.env`:
-
-```
-MAIL_MAILER=smtp
-MAIL_HOST=sandbox.smtp.mailtrap.io
-MAIL_PORT=2525
-MAIL_USERNAME=xxxxxxxxxxxxxx
-MAIL_PASSWORD=xxxxxxxxxxxxxx
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS="noreply@laporan-media.go.id"
-MAIL_FROM_NAME="Laporan Media Kominfo"
-```
-
-### 6.2 Pilihan 2: Tanpa Email (Development)
-```
-MAIL_MAILER=log
-```
-Email akan ditulis ke `storage/logs/laravel.log` tanpa dikirim.
-
-### 6.3 Pilihan 3: Production (Gmail SMTP / SMTP Server)
-```
+# SMTP Email Real (Gmail / Server Mail Kominfo)
 MAIL_MAILER=smtp
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
-MAIL_USERNAME=email_anda@gmail.com
-MAIL_PASSWORD=app_password_anda
+MAIL_USERNAME=kominfomtpadmin@gmail.com
+MAIL_PASSWORD=bzwabhcsdmrucuqm
 MAIL_ENCRYPTION=tls
-```
-
-> Untuk Gmail: aktifkan 2FA dan gunakan **App Password** di [Google Account Security](https://myaccount.google.com/security) > **App passwords**.
-
----
-
-## 7. CAPTCHA
-
-CAPTCHA sudah menggunakan `mews/captcha` (gambar self-hosted, tanpa external service).
-
-### Konfigurasi (opsional)
-Buka `config/captcha.php` untuk menyesuaikan tampilan captcha.
-
-### Frontend Usage
-
-**1. Request gambar captcha:**
-```
-GET /api/captcha
-```
-Response:
-```json
-{
-  "captcha_img": "data:image/png;base64,...",
-  "captcha_key": "abc123..."
-}
-```
-
-**2. Kirim captcha saat register/login/forgot-password:**
-```
-POST /api/auth/login
-{
-  "email": "user@example.com",
-  "password": "password123",
-  "captcha": "jawaban_captcha"    // teks yang user masukkan
-}
-```
-
-### Menonaktifkan CAPTCHA (Development)
-Di `.env`:
-```
-CAPTCHA_DISABLE=true
+MAIL_FROM_ADDRESS="kominfomtpadmin@gmail.com"
+MAIL_FROM_NAME="Laporan Media Kominfo"
 ```
 
 ---
 
-## 8. Menjalankan Server
-
-### Development
+### Langkah 2.4 — Jalankan Docker Containers
 ```bash
-php artisan serve
+# Build dan jalankan container di background
+sudo docker compose up -d --build
 ```
-API tersedia di: `http://localhost:8000/api/`
 
-### Production
-Gunakan Nginx/Apache. Root document: `public/`
+### Langkah 2.5 — Generate Key & Run Database Seeder
+```bash
+# Generate APP_KEY & JWT Secret di dalam container
+sudo docker compose exec app php artisan key:generate
+sudo docker compose exec app php artisan jwt:secret --force
 
-Contoh Nginx:
+# Seed database awal (Jenis Media, Pertanyaan, Skor, Admin)
+sudo docker compose exec app php artisan db:seed --force
+```
+
+Selesai! Aplikasi backend Anda kini berjalan secara terisolasi di port `8000` (atau port yang diset di `docker-compose.yml`).
+
+---
+
+## 3. OPSI B: Deployment Manual di Ubuntu Linux VPS
+
+Jika Anda memilih untuk tidak menggunakan Docker dan menginstall Nginx + PHP secara native di VPS Ubuntu:
+
+### Langkah 3.1 — Install PHP 8.2, Nginx, dan MySQL
+```bash
+sudo apt update && sudo apt install -y software-properties-common
+sudo add-apt-repository ppa:ondrej/php -y
+sudo apt update
+
+sudo apt install -y nginx mysql-server composer git \
+  php8.2-fpm php8.2-mysql php8.2-mbstring php8.2-xml \
+  php8.2-bcmath php8.2-gd php8.2-zip php8.2-curl php8.2-intl
+```
+
+---
+
+### Langkah 3.2 — Buat Database MySQL
+```bash
+sudo mysql -u root
+```
+Di dalam prompt MySQL, jalankan:
+```sql
+CREATE DATABASE laporan_media CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'laporan_user'@'localhost' IDENTIFIED BY 'Password_Sangat_Aman_123!';
+GRANT ALL PRIVILEGES ON laporan_media.* TO 'laporan_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+---
+
+### Langkah 3.3 — Setup Proyek & Permission
+```bash
+cd /var/www
+sudo git clone <URL_REPOSITORY_ANDA> laporan-media
+cd laporan-media
+
+# Install dependencies composer
+sudo composer install --no-dev --optimize-autoloader
+
+# Buat file .env dan isi kredensial
+cp .env.example .env
+nano .env
+
+# Generate Key & Migrate
+php artisan key:generate
+php artisan jwt:secret --force
+php artisan migrate --seed --force
+php artisan storage:link --force
+
+# Atur Izin Akses Folder (Sangat Penting!)
+sudo chown -R www-data:www-data /var/www/laporan-media
+sudo chmod -R 775 /var/www/laporan-media/storage
+sudo chmod -R 775 /var/www/laporan-media/bootstrap/cache
+```
+
+---
+
+### Langkah 3.4 — Konfigurasi Nginx Web Server
+Buat file konfigurasi Nginx baru:
+```bash
+sudo nano /etc/nginx/sites-available/laporan-media
+```
+Tempelkan konfigurasi berikut:
 ```nginx
 server {
     listen 80;
-    server_name laporan-media.kominfo.go.id;
+    server_name api-laporanmedia.banjarkab.go.id;
     root /var/www/laporan-media/public;
 
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
-
     index index.php;
+    charset utf-8;
+    client_max_body_size 20M;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
     location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
     }
 
     location ~ /\.(?!well-known).* {
@@ -236,169 +228,113 @@ server {
 }
 ```
 
----
-
-## 9. Struktur Folder Penting
-
-```
-app/
-├── Http/
-│   ├── Controllers/
-│   │   ├── Api/
-│   │   │   ├── AuthController.php       # Register, login, reset password, Google
-│   │   │   ├── CaptchaController.php    # Generate & reload captcha
-│   │   │   ├── ReportController.php     # CRUD laporan pelapor
-│   │   │   ├── SharedController.php     # Media types, pertanyaan
-│   │   │   └── Admin/
-│   │   │       ├── ExportController.php # PDF export
-│   │   │       ├── ReportController.php # Manajemen laporan admin
-│   │   │       └── UserController.php   # Manajemen user admin
-│   ├── Middleware/
-│   │   └── RoleMiddleware.php           # Cek role + status user
-│   └── Requests/                        # Validasi form request
-├── Models/                               # Eloquent models
-├── Services/
-│   ├── ScoringService.php               # Kalkulasi skor & kategori
-│   └── ReportService.php                # Bisnis logika laporan
-config/
-├── auth.php                              # Guard JWT
-├── captcha.php                           # Konfigurasi captcha
-├── jwt.php                               # Konfigurasi JWT
-└── services.php                          # Google OAuth config
-database/
-├── migrations/                           # Skema database
-└── seeders/
-    ├── AdminUserSeeder.php
-    ├── EvaluationQuestionSeeder.php
-    ├── MediaTypeSeeder.php
-    └── ScoringRuleSeeder.php
-routes/
-├── api.php                               # 29+ endpoint API
-└── web.php
-storage/
-└── app/public/reports/                   # File upload disimpan di sini
+Aktifkan konfigurasi Nginx:
+```bash
+sudo ln -s /etc/nginx/sites-available/laporan-media /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
 ```
 
 ---
 
-## 10. Daftar Lengkap API Endpoint
+## 4. Konfigurasi Domain, HTTPS (SSL), dan Google OAuth
 
-### Auth
-| Method | Endpoint | Auth | Deskripsi |
-|---|---|---|---|
-| POST | `/api/auth/register` | No | Registrasi + captcha |
-| POST | `/api/auth/login` | No | Login + captcha |
-| POST | `/api/auth/logout` | JWT | Logout |
-| POST | `/api/auth/refresh` | JWT | Refresh token |
-| GET | `/api/auth/me` | JWT | Profile |
-| POST | `/api/auth/forgot-password` | No | Reset password link |
-| POST | `/api/auth/reset-password` | No | Submit reset password |
-| GET | `/api/auth/google` | No | OAuth redirect URL |
-| GET | `/api/auth/google/callback` | No | OAuth callback |
+### 4.1 Pasang SSL Gratis (Certbot Let's Encrypt)
+Google OAuth dan API JWT **mewajibkan** protokol HTTPS. Jalankan perintah ini di VPS:
 
-### Shared
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/api/captcha` | Generate captcha image |
-| GET | `/api/captcha/reload` | Reload captcha |
-| GET | `/api/media-types` | List jenis media |
-| GET | `/api/evaluation-questions` | Pertanyaan universal |
-| GET | `/api/evaluation-questions/{mediaTypeId}` | Pertanyaan per jenis media |
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d api-laporanmedia.banjarkab.go.id
+```
+Certbot akan otomatis memperbarui file Nginx Anda sehingga mendukung HTTPS secara aman.
 
-### Pelapor
-| Method | Endpoint | Auth |
-|---|---|---|
-| GET | `/api/reports` | JWT + pelapor |
-| POST | `/api/reports` | JWT + pelapor |
-| GET | `/api/reports/{id}` | JWT + pelapor |
-| PUT | `/api/reports/{id}` | JWT + pelapor |
-| DELETE | `/api/reports/{id}` | JWT + pelapor |
-| POST | `/api/reports/{id}/submit` | JWT + pelapor |
-| POST | `/api/reports/{reportId}/upload/{questionId}` | JWT + pelapor |
-
-### Admin
-| Method | Endpoint | Auth |
-|---|---|---|
-| GET | `/api/admin/dashboard` | JWT + admin |
-| GET | `/api/admin/users` | JWT + admin |
-| GET | `/api/admin/users/{id}` | JWT + admin |
-| PUT | `/api/admin/users/{id}/status` | JWT + admin |
-| DELETE | `/api/admin/users/{id}` | JWT + admin |
-| GET | `/api/admin/reports` | JWT + admin |
-| GET | `/api/admin/reports/{id}` | JWT + admin |
-| PUT | `/api/admin/reports/{id}` | JWT + admin |
-| PUT | `/api/admin/reports/{id}/status` | JWT + admin |
-| GET | `/api/admin/reports/{id}/pdf` | JWT + admin |
-| GET | `/api/admin/export-pdf` | JWT + admin |
-| GET | `/api/admin/export-excel` | JWT + admin |
-
-### Filter Admin Reports
-| Param | Tipe | Deskripsi |
-|---|---|---|
-| `status` | string | pending / proses / disetujui |
-| `media_type_id` | int | Filter jenis media |
-| `search` | string | Cari nama/email/ID |
-| `date_from` | date | YYYY-MM-DD |
-| `date_to` | date | YYYY-MM-DD |
-| `score_min` | int | Skor minimum |
-| `score_max` | int | Skor maksimum |
-| `sort_by` | string | created_at / total_score / status |
-| `sort_dir` | string | asc / desc |
-| `per_page` | int | Jumlah per halaman (max 100) |
+### 4.2 Konfigurasi Google Cloud Console Produksi
+1. Buka [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials).
+2. Pilih OAuth 2.0 Client ID milik Anda.
+3. Tambahkan ke **Authorized JavaScript origins**:
+   `https://laporanmedia.banjarkab.go.id`
+4. Tambahkan ke **Authorized redirect URIs**:
+   `https://laporanmedia.banjarkab.go.id/api/auth/google/callback`
+5. Masuk ke **OAuth consent screen** dan klik **PUBLISH APP**.
 
 ---
 
-## 11. Kategori Penilaian
+## 5. Daftar Akun Default & Seeder
 
-| Total Skor | Kategori |
+### Akun Bawaan Seeder Awal
+| Role | Nama | Email | Password Default | NIP |
+|---|---|---|---|---|
+| Admin Utama | Admin Kominfo | `admin@kominfo.go.id` | `admin123` | - |
+| Admin Media 1 | Admin Media 1 | `admin2@kominfo.go.id` | `admin123` | `198503152010011002` |
+| Admin Media 2 | Admin Media 2 | `admin3@kominfo.go.id` | `admin3@kominfo.go.id` | `198807202014022003` |
+| Admin Google | Admin Kominfo | `kominfomtpadmin@gmail.com` | `admin123` | - |
+
+> **⚠️ Keamanan**: Setelah sistem dipasang di produksi, segera ganti password akun admin atau ubah email admin ke email instansi resmi!
+
+---
+
+## 6. Referensi API Endpoint & Kategori
+
+### Kategori Penilaian Otomatis
+Penilaian total skor dikelompokkan menjadi 4 tingkat kategori:
+
+| Range Total Skor | Kategori |
 |---|---|
-| 68 - 82 | Kategori 1 |
-| 40 - 67 | Kategori 2 |
-| 20 - 39 | Kategori 3 |
-| 0 - 19 | Tidak memenuhi kategori |
+| **68 – 82** | Kategori 1 |
+| **40 – 67** | Kategori 2 |
+| **20 – 39** | Kategori 3 |
+| **0 – 19** | Tidak Memenuhi Kategori |
+
+### Ringkasan Endpoint Utama
+
+#### Autentikasi
+* `POST /api/auth/register` — Registrasi pelapor (+ CAPTCHA)
+* `POST /api/auth/login` — Login (+ CAPTCHA)
+* `GET /api/auth/google` — Dapatkan URL Redirect OAuth Google
+* `GET /api/auth/google/callback` — Handle Callback token Google
+* `POST /api/auth/forgot-password` — Request email reset password
+* `POST /api/auth/reset-password` — Submit password baru
+
+#### Pelapor
+* `GET /api/reports` — Daftar laporan milik pelapor login
+* `POST /api/reports` — Buat draft laporan baru
+* `POST /api/reports/{id}/submit` — Submit laporan final
+* `POST /api/reports/{reportId}/upload/{questionId}` — Upload bukti lampiran PDF
+
+#### Admin
+* `GET /api/admin/dashboard` — Statistik & ringkasan dashboard admin
+* `GET /api/admin/reports` — Filter & pencarian seluruh laporan
+* `PUT /api/admin/reports/{id}/status` — Update status laporan (`proses`, `disetujui`)
+* `GET /api/admin/export-excel` — Export laporan ke format `.xlsx`
+* `GET /api/admin/export-pdf` — Export rekap ke PDF
 
 ---
 
-## 12. Troubleshooting
+## 7. Pemeliharaan, Backup & Troubleshooting
 
-### Error: Class "Tymon\JWTAuth\Providers\JWT\Provider" not found
+### Perintah Optimasi Produksi (Jalankan setelah perbaikan kode/`.env`)
 ```bash
-composer dump-autoload -o
 php artisan config:clear
-php artisan cache:clear
+php artisan route:clear
+php artisan view:clear
+
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 ```
 
-### Error: SQLSTATE[HY000] [2002] Connection refused
-- Pastikan MySQL/MariaDB berjalan
-- Periksa kredensial di `.env`
+### Memantau Log Error
+* **Jika Menggunakan Docker**:
+  ```bash
+  sudo docker compose logs -f app
+  ```
+* **Jika Native Ubuntu**:
+  ```bash
+  tail -f storage/logs/laravel.log
+  ```
 
-### CAPTCHA tidak muncul
-- Pastikan ekstensi PHP `gd` terinstall
-- Atau set `CAPTCHA_DISABLE=true` di `.env`
-
-### Storage link 404
+### Backup Database Rutin
 ```bash
-php artisan storage:link --force
+# Manual MySQL dump
+mysqldump -u laporan_user -p laporan_media > backup_laporan_$(date +%Y%m%d).sql
 ```
-
-### Reset semuanya (fresh start)
-```bash
-php artisan migrate:fresh --seed
-php artisan storage:link
-php artisan optimize:clear
-```
-
----
-
-## 13. Untuk Tim Frontend
-
-Dokumentasi lengkap setiap endpoint ada di `api_documentation.md`.
-
-### Catatan Penting untuk Frontend:
-1. **Token JWT**: Simpan di localStorage, kirim via header `Authorization: Bearer <token>`
-2. **Refresh token**: Sebelum expired (default 1 jam), panggil `POST /api/auth/refresh`
-3. **CAPTCHA**: Panggil `GET /api/captcha` untuk mendapatkan gambar, user input teks captcha
-4. **Upload file**: Gunakan endpoint terpisah, format PDF max 5MB
-5. **Pertanyaan per media**: Panggil `GET /api/evaluation-questions/{mediaTypeId}` setelah user memilih jenis media
-6. **Draft**: Buat laporan tanpa `submit: true`, panggil submit endpoint saat siap
-7. **Edit**: Laporan hanya bisa diedit saat status `pending`

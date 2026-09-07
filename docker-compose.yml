@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laporan_media_app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      APP_NAME: "${APP_NAME:-Laporan Media Kominfo}"
+      APP_ENV: "${APP_ENV:-production}"
+      APP_KEY: "${APP_KEY}"
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_URL: "${APP_URL:-http://localhost:8000}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
+      APP_TIMEZONE: "${APP_TIMEZONE:-Asia/Makassar}"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: "${DB_DATABASE:-laporan_media}"
+      DB_USERNAME: "${DB_USERNAME:-laporan_user}"
+      DB_PASSWORD: "${DB_PASSWORD:-laporan_secret}"
+      JWT_SECRET: "${JWT_SECRET}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
+      GOOGLE_REDIRECT_URI: "${GOOGLE_REDIRECT_URI}"
+      MAIL_MAILER: "${MAIL_MAILER:-smtp}"
+      MAIL_HOST: "${MAIL_HOST:-smtp.gmail.com}"
+      MAIL_PORT: "${MAIL_PORT:-587}"
+      MAIL_USERNAME: "${MAIL_USERNAME}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD}"
+      MAIL_ENCRYPTION: "${MAIL_ENCRYPTION:-tls}"
+      MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-noreply@kominfo.go.id}"
+      MAIL_FROM_NAME: "${MAIL_FROM_NAME:-Laporan Media Kominfo}"
+    volumes:
+      - ./storage/app/public:/var/www/storage/app/public
+      - ./storage/logs:/var/www/storage/logs
+    depends_on:
+      - db
+    networks:
+      - laporan_net
+
+  db:
+    image: mysql:8.0
+    container_name: laporan_media_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: "${DB_DATABASE:-laporan_media}"
+      MYSQL_USER: "${DB_USERNAME:-laporan_user}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-laporan_secret}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-root_secret}"
+    ports:
+      - "33060:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - laporan_net
+
+volumes:
+  db_data:
+
+networks:
+  laporan_net:
+    driver: bridge
+
