@@ -7,8 +7,6 @@ services:
     restart: unless-stopped
     ports:
       - "8000:80"
-    env_file:
-      - .env
     environment:
       APP_NAME: "${APP_NAME:-Laporan Media Kominfo}"
       APP_ENV: "${APP_ENV:-production}"
@@ -21,8 +19,6 @@ services:
       DB_HOST: db
       DB_PORT: 3306
       DB_DATABASE: "${DB_DATABASE:-laporan_media}"
-      DB_USERNAME: "${DB_USERNAME:-laporan_user}"
-      DB_PASSWORD: "${DB_PASSWORD:-laporan_secret}"
       DB_USERNAME: "root"
       DB_PASSWORD: "${DB_PASSWORD:-root_secret}"
       JWT_SECRET: "${JWT_SECRET}"
@@ -53,9 +49,6 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: "${DB_DATABASE:-laporan_media}"
-      MYSQL_USER: "${DB_USERNAME:-laporan_user}"
-      MYSQL_PASSWORD: "${DB_PASSWORD:-laporan_secret}"
-      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-root_secret}"
       MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-root_secret}"
     ports:
       - "33060:3306"
@@ -70,4 +63,3 @@ volumes:
 networks:
   laporan_net:
     driver: bridge
-
