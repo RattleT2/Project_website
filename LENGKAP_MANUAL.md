@@ -26,6 +26,7 @@ Dokumen ini berisi panduan lengkap dari tahap pengembangan hingga alur pemindaha
 
 ### Kebutuhan Perangkat Lunak (Native Install)
 - **PHP**: Versi `>= 8.2` (Modul: `pdo_mysql`, `mbstring`, `exif`, `pcntl`, `bcmath`, `gd`, `zip`, `opcache`, `xml`)
+- **PHP**: Versi `>= 8.4` (Modul: `pdo_mysql`, `mbstring`, `exif`, `pcntl`, `bcmath`, `gd`, `zip`, `opcache`, `xml`, `intl`)
 - **Web Server**: Nginx
 - **Database**: MySQL 8.0+ atau MariaDB 10.5+
 - **Composer**: Versi `>= 2.x`
@@ -217,6 +218,7 @@ server {
 
     location ~ \.php$ {
         fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;
@@ -267,6 +269,7 @@ Certbot akan otomatis memperbarui file Nginx Anda sehingga mendukung HTTPS secar
 | Admin Utama | Admin Kominfo | `admin@kominfo.go.id` | `admin123` | - |
 | Admin Media 1 | Admin Media 1 | `admin2@kominfo.go.id` | `admin123` | `198503152010011002` |
 | Admin Media 2 | Admin Media 2 | `admin3@kominfo.go.id` | `admin3@kominfo.go.id` | `198807202014022003` |
+| Admin Media 2 | Admin Media 2 | `admin3@kominfo.go.id` | `admin123` | `198807202014022003` |
 | Admin Google | Admin Kominfo | `kominfomtpadmin@gmail.com` | `admin123` | - |
 
 > **⚠️ Keamanan**: Setelah sistem dipasang di produksi, segera ganti password akun admin atau ubah email admin ke email instansi resmi!
@@ -298,8 +301,11 @@ Penilaian total skor dikelompokkan menjadi 4 tingkat kategori:
 #### Pelapor
 * `GET /api/reports` — Daftar laporan milik pelapor login
 * `POST /api/reports` — Buat draft laporan baru
+* `POST /api/reports` — Buat draft / submit laporan baru sekaligus
+* `POST /api/reports/upload/{questionId}` — Upload bukti lampiran form sebelum laporan dibuat
 * `POST /api/reports/{id}/submit` — Submit laporan final
 * `POST /api/reports/{reportId}/upload/{questionId}` — Upload bukti lampiran PDF
+* `POST /api/reports/{reportId}/upload/{questionId}` — Upload bukti lampiran pada laporan draft yang sudah ada
 
 #### Admin
 * `GET /api/admin/dashboard` — Statistik & ringkasan dashboard admin
