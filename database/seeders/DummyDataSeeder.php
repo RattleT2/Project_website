@@ -61,42 +61,49 @@ class DummyDataSeeder extends Seeder
         $service = app(ReportService::class);
         $questions = EvaluationQuestion::with('scoringRules')->get();
 
+        $mediaTypes = MediaType::pluck('id', 'name');
+
         $mediaNames = [
-            1 => ['Banjar Post', 'Kalsel Online', 'Berita Banua', 'Martapura News'],
-            2 => ['Radar Banjar', 'Banjar Harian', 'Koran Banua'],
-            3 => ['Banjar Elektronik', 'E-Banjar News', 'Media Digital Banjar'],
-            4 => ['TV Banjar', 'Banjar TV', 'Kalsel TV'],
-            5 => ['Radio Martapura FM', 'Radio Banjar', 'Suara Banua FM'],
+            'Online' => ['Banjar Post', 'Kalsel Online', 'Berita Banua', 'Martapura News'],
+            'Cetak' => ['Radar Banjar', 'Banjar Harian', 'Koran Banua'],
+            'Elektronik' => ['Banjar Elektronik', 'E-Banjar News', 'Media Digital Banjar'],
+            'Televisi' => ['TV Banjar', 'Banjar TV', 'Kalsel TV'],
+            'Radio' => ['Radio Martapura FM', 'Radio Banjar', 'Suara Banua FM'],
         ];
 
         $plans = [
-            [0, 1, 'disetujui'],
-            [1, 1, 'disetujui'],
-            [2, 1, 'proses'],
-            [3, 1, 'pending'],
-            [4, 2, 'disetujui'],
-            [5, 2, 'proses'],
-            [6, 2, 'pending'],
-            [7, 4, 'disetujui'],
-            [0, 4, 'proses'],
-            [1, 4, 'pending'],
-            [2, 5, 'disetujui'],
-            [3, 5, 'proses'],
-            [4, 5, 'pending'],
-            [5, 3, 'disetujui'],
-            [6, 3, 'proses'],
-            [7, 3, 'pending'],
+            [0, 'Online', 'disetujui'],
+            [1, 'Online', 'disetujui'],
+            [2, 'Online', 'proses'],
+            [3, 'Online', 'pending'],
+            [4, 'Cetak', 'disetujui'],
+            [5, 'Cetak', 'proses'],
+            [6, 'Cetak', 'pending'],
+            [7, 'Televisi', 'disetujui'],
+            [0, 'Televisi', 'proses'],
+            [1, 'Televisi', 'pending'],
+            [2, 'Radio', 'disetujui'],
+            [3, 'Radio', 'proses'],
+            [4, 'Radio', 'pending'],
+            [5, 'Elektronik', 'disetujui'],
+            [6, 'Elektronik', 'proses'],
+            [7, 'Elektronik', 'pending'],
         ];
 
         $daysAgo = 0;
 
         foreach ($plans as $plan) {
-            [$userIndex, $mediaTypeId, $status] = $plan;
+            [$userIndex, $typeName, $status] = $plan;
+            $mediaTypeId = $mediaTypes[$typeName] ?? null;
+
+            if (!$mediaTypeId) {
+                continue;
+            }
 
             $answers = $this->buildAnswers(
                 $questions,
                 $mediaTypeId,
-                $mediaNames[$mediaTypeId]
+                $mediaNames[$typeName]
             );
 
             $report = $service->createReport($users[$userIndex]->id, [
@@ -133,6 +140,12 @@ class DummyDataSeeder extends Seeder
                 $answers[] = [
                     'question_id' => $question->id,
                     'answer_value' => $mediaName,
+                    'answer_type' => 'text',
+                ];
+            } elseif (str_contains($text, 'whatsapp') || str_contains($text, 'kontak')) {
+                $answers[] = [
+                    'question_id' => $question->id,
+                    'answer_value' => '08' . random_int(1111111111, 9999999999),
                     'answer_type' => 'text',
                 ];
             } elseif (str_contains($text, 'upload')) {

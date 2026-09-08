@@ -20,6 +20,7 @@ class ReportMandatoryValidationTest extends TestCase
     protected User $admin;
     protected MediaType $mediaType;
     protected EvaluationQuestion $question1;
+    protected EvaluationQuestion $questionWa;
     protected EvaluationQuestion $question2;
     protected EvaluationQuestion $questionOptional;
 
@@ -45,6 +46,14 @@ class ReportMandatoryValidationTest extends TestCase
         $this->question1 = EvaluationQuestion::create([
             'category' => 'identitas',
             'question_text' => 'Nama Media',
+            'weight' => 0,
+            'is_mandatory' => true,
+            'media_type_id' => null,
+        ]);
+
+        $this->questionWa = EvaluationQuestion::create([
+            'category' => 'identitas',
+            'question_text' => 'Nomor WhatsApp / Kontak yang Dapat Dihubungi',
             'weight' => 0,
             'is_mandatory' => true,
             'media_type_id' => null,
@@ -81,7 +90,7 @@ class ReportMandatoryValidationTest extends TestCase
                         'answer_value' => 'Media Banjar Online',
                         'answer_type' => 'text',
                     ],
-                    // Missing mandatory question2 (Akta pendirian)
+                    // Missing mandatory questionWa & question2 (Akta pendirian)
                 ],
             ]);
 
@@ -147,6 +156,11 @@ class ReportMandatoryValidationTest extends TestCase
                         'answer_type' => 'text',
                     ],
                     [
+                        'question_id' => $this->questionWa->id,
+                        'answer_value' => '081234567890',
+                        'answer_type' => 'text',
+                    ],
+                    [
                         'question_id' => $this->question2->id,
                         'answer_value' => 'reports/questions/2/akta.pdf',
                         'answer_type' => 'file',
@@ -157,12 +171,13 @@ class ReportMandatoryValidationTest extends TestCase
         $response->assertStatus(201);
         $this->assertNotNull($response->json('report.submitted_at'));
 
-        // Admin sees the submitted report
+        // Admin sees the submitted report with whatsapp_number
         $adminToken = auth('api')->login($this->admin);
         $adminListResponse = $this->withHeader('Authorization', "Bearer {$adminToken}")
             ->getJson('/api/admin/reports');
         $adminListResponse->assertStatus(200)
-            ->assertJsonPath('total', 1);
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.whatsapp_number', '081234567890');
     }
 
     public function test_standalone_file_upload_returns_file_path(): void
@@ -184,4 +199,3 @@ class ReportMandatoryValidationTest extends TestCase
         Storage::disk('public')->assertExists($filePath);
     }
 }
-

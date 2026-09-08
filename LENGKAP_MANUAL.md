@@ -8,7 +8,7 @@ Dokumen ini berisi panduan lengkap dari tahap pengembangan hingga alur pemindaha
 1. [Struktur & Prasyarat Sistem](#1-prasyarat-sistem)
 2. [Alur Deployment Produksi Opsi A: Menggunakan Docker (Rekomendasi Utama)](#2-opsi-a-deployment-menggunakan-docker-rekomendasi)
 3. [Alur Deployment Produksi Opsi B: Manual di Ubuntu Linux VPS](#3-opsi-b-deployment-manual-di-ubuntu-linux-vps)
-4. [Konfigurasi Domain, HTTPS (SSL), dan Google OAuth](#4-konfigurasi-domain-https-ssl-dan-google-oauth)
+4. [Arsitektur Domain, Integrasi Frontend (Next.js), dan Nginx Reverse Proxy](#4-arsitektur-domain-integrasi-frontend-nextjs-dan-nginx-reverse-proxy)
 5. [Daftar Akun Default & Pengelolaan Seeder](#5-daftar-akun-default--seeder)
 6. [Struktur Folder & Referensi API Endpoint](#6-referensi-api-endpoint--kategori)
 7. [Panduan Pemeliharaan, Backup & Troubleshooting](#7-pemeliharaan-backup--troubleshooting)
@@ -217,7 +217,6 @@ server {
     error_page 404 /index.php;
 
     location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
         fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
@@ -239,18 +238,110 @@ sudo systemctl restart nginx
 
 ---
 
-## 4. Konfigurasi Domain, HTTPS (SSL), dan Google OAuth
+## 4. Arsitektur Domain, Integrasi Frontend (Next.js), dan Nginx Reverse Proxy
 
-### 4.1 Pasang SSL Gratis (Certbot Let's Encrypt)
-Google OAuth dan API JWT **mewajibkan** protokol HTTPS. Jalankan perintah ini di VPS:
+### 4.1 Struktur Folder di Server Produksi
+Sangat disarankan **memisahkan folder Backend dan Frontend** agar tidak terjadi konflik git dan memudahkan pemeliharaan:
+
+```text
+/var/www/
+├── laporan-media/          # Folder Backend (Laravel API + Docker) -> Port 8000
+└── laporan-media-frontend/ # Folder Frontend (Next.js)             -> Port 3000
+```
+
+---
+
+### 4.2 Skema Penamaan Domain
+Gunakan pola subdomain terpisah untuk memisahkan antarmuka pengguna (UI) dan layanan API:
+
+| Layanan | Nama Domain | Port Internal Server |
+|---|---|---|
+| **Frontend (Next.js)** | `https://laporanmedia.banjarkab.go.id` | Port `3000` |
+| **Backend (Laravel API)** | `https://api-laporanmedia.banjarkab.go.id` | Port `8000` (Docker) |
+
+---
+
+### 4.3 Konfigurasi Environment (`.env`)
+
+#### Di Sisi Backend (`/var/www/laporan-media/.env`):
+```env
+APP_URL=https://api-laporanmedia.banjarkab.go.id
+FRONTEND_URL=https://laporanmedia.banjarkab.go.id
+GOOGLE_REDIRECT_URI=https://laporanmedia.banjarkab.go.id/api/auth/google/callback
+```
+
+#### Di Sisi Frontend (`/var/www/laporan-media-frontend/.env.production`):
+```env
+NEXT_PUBLIC_API_URL=https://api-laporanmedia.banjarkab.go.id/api
+```
+
+---
+
+### 4.4 Konfigurasi Nginx Reverse Proxy di Server VPS
+
+Buat file konfigurasi Nginx untuk menghubungkan kedua domain ke masing-masing port:
+```bash
+sudo nano /etc/nginx/sites-available/laporan-media-proxy
+```
+
+Isi konfigurasi berikut:
+```nginx
+# 1. Reverse Proxy untuk Frontend Next.js (Port 3000)
+server {
+    listen 80;
+    server_name laporanmedia.banjarkab.go.id;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# 2. Reverse Proxy untuk Backend Laravel Docker (Port 8000)
+server {
+    listen 80;
+    server_name api-laporanmedia.banjarkab.go.id;
+
+    client_max_body_size 20M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Aktifkan konfigurasi Nginx:
+```bash
+sudo ln -s /etc/nginx/sites-available/laporan-media-proxy /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+---
+
+### 4.5 Pasang SSL Gratis (Certbot Let's Encrypt) untuk Kedua Domain
+Google OAuth dan API JWT **mewajibkan protokol HTTPS**. Jalankan perintah ini di VPS:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d api-laporanmedia.banjarkab.go.id
+sudo certbot --nginx -d laporanmedia.banjarkab.go.id -d api-laporanmedia.banjarkab.go.id
 ```
-Certbot akan otomatis memperbarui file Nginx Anda sehingga mendukung HTTPS secara aman.
+Certbot akan otomatis memperbarui konfigurasi Nginx untuk mengaktifkan HTTPS (Port 443) pada kedua domain tersebut.
 
-### 4.2 Konfigurasi Google Cloud Console Produksi
+---
+
+### 4.6 Konfigurasi Google Cloud Console Produksi
 1. Buka [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials).
 2. Pilih OAuth 2.0 Client ID milik Anda.
 3. Tambahkan ke **Authorized JavaScript origins**:

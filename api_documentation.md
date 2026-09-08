@@ -471,6 +471,14 @@ GET /api/evaluation-questions
   },
   {
     "id": 2,
+    "category": "identitas",
+    "question_text": "Nomor WhatsApp / Kontak yang Dapat Dihubungi",
+    "weight": 0,
+    "is_mandatory": true,
+    "scoring_rules": []
+  },
+  {
+    "id": 3,
     "category": "verifikasi",
     "question_text": "Media terverifikasi...",
     "weight": 25,
@@ -921,6 +929,7 @@ Authorization: Bearer <token>
       "id": 1,
       "report_code": "ON-001",
       "media_name": "Media Banjar News",
+      "whatsapp_number": "081234567890",
       "user_name": "Budi Santoso",
       "user_email": "budi@mediabanjar.com",
       "media_type": "Online",
@@ -939,6 +948,7 @@ Authorization: Bearer <token>
 > **Penjelasan field:**
 > - `report_code` → kode laporan (misal `ON-001`, `CT-001`)
 > - `media_name` → nama media (diambil dari jawaban pertanyaan "Nama Media")
+> - `whatsapp_number` → nomor WhatsApp / kontak yang dapat dihubungi
 > - `user_name` / `user_email` → nama & email pelapor
 > - `media_type` → jenis media (Online/Cetak/Elektronik/Televisi/Radio)
 > - `submitted_at` → tanggal submit (null jika masih draft)

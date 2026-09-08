@@ -94,12 +94,12 @@ class ExportController extends Controller
 
         $mediaTypeName = $mediaType ? $mediaType->name : 'Semua Jenis Media';
         $sheet->setCellValue('A2', "Jenis Media: {$mediaTypeName}");
-        $sheet->mergeCells('A2:F2');
+        $sheet->mergeCells('A2:G2');
         $sheet->getStyle('A2')->getFont()->setItalic(true)->setSize(11);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         $sheet->setCellValue('A3', 'Tanggal Unduh: ' . now()->translatedFormat('d F Y H:i'));
-        $sheet->mergeCells('A3:F3');
+        $sheet->mergeCells('A3:G3');
         $sheet->getStyle('A3')->getFont()->setSize(10);
         $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
@@ -108,9 +108,10 @@ class ExportController extends Controller
             'A5' => 'No',
             'B5' => 'Kode Media',
             'C5' => 'Nama Media',
-            'D5' => 'Tanggal Submit',
-            'E5' => 'Total Score',
-            'F5' => 'Kategori',
+            'D5' => 'Nomor WhatsApp',
+            'E5' => 'Tanggal Submit',
+            'F5' => 'Total Score',
+            'G5' => 'Kategori',
         ];
 
         foreach ($headers as $cell => $headerTitle) {
@@ -132,7 +133,7 @@ class ExportController extends Controller
                 'vertical' => Alignment::VERTICAL_CENTER,
             ],
         ];
-        $sheet->getStyle('A5:F5')->applyFromArray($headerStyle);
+        $sheet->getStyle('A5:G5')->applyFromArray($headerStyle);
         $sheet->getRowDimension(5)->setRowHeight(26);
 
         // Data Rows
@@ -142,19 +143,24 @@ class ExportController extends Controller
                 ->first(fn ($a) => $a->question && $a->question->question_text === 'Nama Media');
             $mediaName = $mediaNameAnswer?->answer_value ?? '-';
 
+            $whatsappAnswer = $report->answers
+                ->first(fn ($a) => $a->question && str_contains(strtolower($a->question->question_text), 'whatsapp'));
+            $whatsappNumber = $whatsappAnswer?->answer_value ?? '-';
+
             $category = $this->scoringService->getCategory($report->total_score);
 
             $sheet->setCellValue("A{$rowIndex}", $index + 1);
             $sheet->setCellValue("B{$rowIndex}", $report->report_code ?? '-');
             $sheet->setCellValue("C{$rowIndex}", $mediaName);
+            $sheet->setCellValueExplicit("D{$rowIndex}", $whatsappNumber, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $submittedAt = $report->submitted_at ?? $report->created_at;
-            $sheet->setCellValue("D{$rowIndex}", $submittedAt ? $submittedAt->format('d/m/Y H:i') : '-');
-            $sheet->setCellValue("E{$rowIndex}", $report->total_score);
-            $sheet->setCellValue("F{$rowIndex}", $category);
+            $sheet->setCellValue("E{$rowIndex}", $submittedAt ? $submittedAt->format('d/m/Y H:i') : '-');
+            $sheet->setCellValue("F{$rowIndex}", $report->total_score);
+            $sheet->setCellValue("G{$rowIndex}", $category);
 
             // Row zebra striping for readability
             if ($index % 2 === 1) {
-                $sheet->getStyle("A{$rowIndex}:F{$rowIndex}")->getFill()
+                $sheet->getStyle("A{$rowIndex}:G{$rowIndex}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setRGB('F8FAFC');
             }
@@ -173,7 +179,7 @@ class ExportController extends Controller
                 ],
             ],
         ];
-        $sheet->getStyle("A5:F{$lastRow}")->applyFromArray($borderStyle);
+        $sheet->getStyle("A5:G{$lastRow}")->applyFromArray($borderStyle);
 
         if ($lastRow >= 6) {
             $sheet->getStyle("A6:A{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -182,10 +188,11 @@ class ExportController extends Controller
             $sheet->getStyle("D6:D{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("E6:E{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("F6:F{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("G6:G{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
         // Auto-fit column width
-        foreach (range('A', 'F') as $col) {
+        foreach (range('A', 'G') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

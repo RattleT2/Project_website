@@ -15,6 +15,7 @@ class EvaluationQuestionSeeder extends Seeder
 
         $universalQuestions = [
             ['media_type_id' => null, 'category' => 'identitas', 'question_text' => 'Nama Media', 'weight' => 0, 'is_mandatory' => true],
+            ['media_type_id' => null, 'category' => 'identitas', 'question_text' => 'Nomor WhatsApp / Kontak yang Dapat Dihubungi', 'weight' => 0, 'is_mandatory' => true],
             ['media_type_id' => null, 'category' => 'verifikasi', 'question_text' => 'Media terverifikasi Dewan Pers, baik verifikasi administrasi dan/atau verifikasi faktual', 'weight' => 25, 'is_mandatory' => true],
             ['media_type_id' => null, 'category' => 'verifikasi', 'question_text' => 'Upload bukti dukung verifikasi (PDF, maks 5MB)', 'weight' => 0, 'is_mandatory' => false],
             ['media_type_id' => null, 'category' => 'kompetensi', 'question_text' => 'Pimpinan redaksi media memiliki sertifikat Uji Kompetensi Wartawan yang masih berlaku', 'weight' => 8, 'is_mandatory' => true],
@@ -35,22 +36,27 @@ class EvaluationQuestionSeeder extends Seeder
             EvaluationQuestion::create($q);
         }
 
+        $mediaTypes = \App\Models\MediaType::pluck('id', 'name');
+
         $mediaSpecificQuestions = [
-            1 => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
-            2 => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
-            3 => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
-            4 => 'Tersedia tayangan berita Kabupaten Banjar secara rutin',
-            5 => 'Tersedia siaran berita Kabupaten Banjar secara rutin',
+            'Online' => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
+            'Cetak' => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
+            'Elektronik' => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
+            'Televisi' => 'Tersedia tayangan berita Kabupaten Banjar secara rutin',
+            'Radio' => 'Tersedia siaran berita Kabupaten Banjar secara rutin',
         ];
 
-        foreach ($mediaSpecificQuestions as $mediaTypeId => $text) {
-            EvaluationQuestion::create([
-                'media_type_id' => $mediaTypeId,
-                'category' => 'sosial_media',
-                'question_text' => $text,
-                'weight' => 7,
-                'is_mandatory' => true,
-            ]);
+        foreach ($mediaSpecificQuestions as $typeName => $text) {
+            $mediaTypeId = $mediaTypes[$typeName] ?? null;
+            if ($mediaTypeId) {
+                EvaluationQuestion::create([
+                    'media_type_id' => $mediaTypeId,
+                    'category' => 'sosial_media',
+                    'question_text' => $text,
+                    'weight' => 7,
+                    'is_mandatory' => true,
+                ]);
+            }
         }
 
         EvaluationQuestion::create([
