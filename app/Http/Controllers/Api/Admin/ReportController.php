@@ -183,30 +183,39 @@ class ReportController extends Controller
         $mediaNameAnswer = $report->answers
             ->first(fn ($a) => $a->question && $a->question->question_text === 'Nama Media');
         $whatsappAnswer = $report->answers->first(function ($a) {
-            if (!$a || !$a->question) {
+            if (!$a) {
                 return false;
             }
             // File uploads are never whatsapp numbers
             if ($a->answer_type === 'file') {
                 return false;
             }
-            $qText = strtolower($a->question->question_text);
-            $category = strtolower($a->question->category ?? '');
 
-            // Priority 1: Identitas category that is not media name
-            if ($category === 'identitas' && !str_contains($qText, 'nama')) {
-                return true;
+            if ($a->question) {
+                $qText = strtolower($a->question->question_text);
+                $category = strtolower($a->question->category ?? '');
+
+                // Priority 1: Identitas category that is not media name
+                if ($category === 'identitas' && !str_contains($qText, 'nama')) {
+                    return true;
+                }
+
+                // Priority 2: Specific phone/whatsapp keywords
+                if (str_contains($qText, 'whatsapp') ||
+                    str_contains($qText, 'kontak') ||
+                    str_contains($qText, 'telepon') ||
+                    str_contains($qText, 'no hp') ||
+                    str_contains($qText, 'nomor hp') ||
+                    str_contains($qText, 'handphone') ||
+                    str_contains($qText, 'ponsel') ||
+                    preg_match('/\bwa\b/i', $qText)) {
+                    return true;
+                }
             }
 
-            // Priority 2: Specific phone/whatsapp keywords
-            if (str_contains($qText, 'whatsapp') ||
-                str_contains($qText, 'kontak') ||
-                str_contains($qText, 'telepon') ||
-                str_contains($qText, 'no hp') ||
-                str_contains($qText, 'nomor hp') ||
-                str_contains($qText, 'handphone') ||
-                str_contains($qText, 'ponsel') ||
-                preg_match('/\bwa\b/i', $qText)) {
+            // Fallback: value matches phone number pattern
+            $val = trim((string) ($a->answer_value ?? ''));
+            if (preg_match('/^(\+62|62|08)[0-9\-\s]{7,16}$/', $val)) {
                 return true;
             }
 

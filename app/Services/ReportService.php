@@ -312,7 +312,20 @@ class ReportService
     {
         $answers = $data['answers'] ?? [];
 
-        $rootWhatsapp = $data['whatsapp_number'] ?? $data['contact_number'] ?? $data['whatsapp'] ?? $data['phone'] ?? null;
+        $rootWhatsapp = $data['whatsapp_number']
+            ?? $data['contact_number']
+            ?? $data['whatsapp']
+            ?? $data['phone']
+            ?? $data['no_wa']
+            ?? $data['no_hp']
+            ?? $data['telepon']
+            ?? $data['kontak']
+            ?? $data['nomor_kontak']
+            ?? $data['nomor_telepon']
+            ?? $data['nomor_wa']
+            ?? $data['nomor_hp']
+            ?? null;
+
         if ($rootWhatsapp !== null && trim((string) $rootWhatsapp) !== '') {
             $whatsappQuestion = EvaluationQuestion::where('category', 'identitas')
                 ->where(function ($q) {
@@ -326,6 +339,20 @@ class ReportService
                 $whatsappQuestion = EvaluationQuestion::where('category', 'identitas')
                     ->where('question_text', 'not like', '%nama%')
                     ->first();
+            }
+
+            if (!$whatsappQuestion) {
+                $whatsappQuestion = EvaluationQuestion::firstOrCreate(
+                    [
+                        'category' => 'identitas',
+                        'question_text' => 'Nomor WhatsApp / Kontak yang Dapat Dihubungi',
+                    ],
+                    [
+                        'media_type_id' => null,
+                        'weight' => 0,
+                        'is_mandatory' => true,
+                    ]
+                );
             }
 
             if ($whatsappQuestion) {
