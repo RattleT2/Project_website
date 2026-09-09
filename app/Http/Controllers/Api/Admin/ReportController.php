@@ -182,25 +182,36 @@ class ReportController extends Controller
     {
         $mediaNameAnswer = $report->answers
             ->first(fn ($a) => $a->question && $a->question->question_text === 'Nama Media');
-        $whatsappAnswer = $report->answers
-            ->first(fn ($a) => $a->question && (
-                str_contains(strtolower($a->question->question_text), 'whatsapp') ||
-                str_contains(strtolower($a->question->question_text), 'kontak') ||
-                str_contains(strtolower($a->question->question_text), 'telepon') ||
-                str_contains(strtolower($a->question->question_text), 'no hp') ||
-                str_contains(strtolower($a->question->question_text), 'nomor hp') ||
-                str_contains(strtolower($a->question->question_text), 'wa') ||
-                str_contains(strtolower($a->question->question_text), 'handphone') ||
-                str_contains(strtolower($a->question->question_text), 'ponsel')
-            ));
+        $whatsappAnswer = $report->answers->first(function ($a) {
+            if (!$a || !$a->question) {
+                return false;
+            }
+            // File uploads are never whatsapp numbers
+            if ($a->answer_type === 'file') {
+                return false;
+            }
+            $qText = strtolower($a->question->question_text);
+            $category = strtolower($a->question->category ?? '');
 
-        if (!$whatsappAnswer) {
-            $whatsappAnswer = $report->answers->first(function ($a) {
-                if (!$a->question) return false;
-                $text = strtolower($a->question->question_text);
-                return $a->question->category === 'identitas' && !str_contains($text, 'nama');
-            });
-        }
+            // Priority 1: Identitas category that is not media name
+            if ($category === 'identitas' && !str_contains($qText, 'nama')) {
+                return true;
+            }
+
+            // Priority 2: Specific phone/whatsapp keywords
+            if (str_contains($qText, 'whatsapp') ||
+                str_contains($qText, 'kontak') ||
+                str_contains($qText, 'telepon') ||
+                str_contains($qText, 'no hp') ||
+                str_contains($qText, 'nomor hp') ||
+                str_contains($qText, 'handphone') ||
+                str_contains($qText, 'ponsel') ||
+                preg_match('/\bwa\b/i', $qText)) {
+                return true;
+            }
+
+            return false;
+        });
 
         $val = trim((string) ($whatsappAnswer?->answer_value ?? ''));
         $whatsappNumber = $val !== '' ? $val : null;
