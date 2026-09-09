@@ -12,8 +12,8 @@ class UpdateReportRequest extends FormRequest
             'media_type_id' => 'sometimes|exists:media_types,id',
             'answers' => 'sometimes|array',
             'answers.*.question_id' => 'required_with:answers|exists:evaluation_questions,id',
-            'answers.*.answer_value' => 'required_with:answers|string',
-            'answers.*.answer_type' => 'required_with:answers|in:text,file,url',
+            'answers.*.answer_value' => 'nullable|string',
+            'answers.*.answer_type' => 'nullable|in:text,file,url',
             'link_url' => 'nullable|url',
             'submit' => 'nullable|boolean',
         ];

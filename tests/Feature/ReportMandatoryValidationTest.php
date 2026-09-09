@@ -90,8 +90,6 @@ class ReportMandatoryValidationTest extends TestCase
                         'answer_value' => 'Media Banjar Online',
                         'answer_type' => 'text',
                     ],
-                    // Missing mandatory question2 (Akta pendirian)
-                    // Missing mandatory questionWa & question2 (Akta pendirian)
                 ],
             ]);
 
@@ -105,7 +103,6 @@ class ReportMandatoryValidationTest extends TestCase
     {
         $pelaporToken = auth('api')->login($this->pelapor);
 
-        // 1. Pelapor creates a draft
         $createResponse = $this->withHeader('Authorization', "Bearer {$pelaporToken}")
             ->postJson('/api/reports', [
                 'media_type_id' => $this->mediaType->id,
@@ -122,20 +119,17 @@ class ReportMandatoryValidationTest extends TestCase
         $createResponse->assertStatus(201);
         $this->assertNull($createResponse->json('report.submitted_at'));
 
-        // 2. Pelapor can see their own draft
         $pelaporListResponse = $this->withHeader('Authorization', "Bearer {$pelaporToken}")
             ->getJson('/api/reports');
         $pelaporListResponse->assertStatus(200)
             ->assertJsonCount(1);
 
-        // 3. Admin does NOT see the unsubmitted draft
         $adminToken = auth('api')->login($this->admin);
         $adminListResponse = $this->withHeader('Authorization', "Bearer {$adminToken}")
             ->getJson('/api/admin/reports');
         $adminListResponse->assertStatus(200)
             ->assertJsonPath('total', 0);
 
-        // 4. Admin dashboard does NOT count the draft
         $adminDashResponse = $this->withHeader('Authorization', "Bearer {$adminToken}")
             ->getJson('/api/admin/dashboard');
         $adminDashResponse->assertStatus(200)
@@ -172,13 +166,10 @@ class ReportMandatoryValidationTest extends TestCase
         $response->assertStatus(201);
         $this->assertNotNull($response->json('report.submitted_at'));
 
-        // Admin sees the submitted report
-        // Admin sees the submitted report with whatsapp_number
         $adminToken = auth('api')->login($this->admin);
         $adminListResponse = $this->withHeader('Authorization', "Bearer {$adminToken}")
             ->getJson('/api/admin/reports');
         $adminListResponse->assertStatus(200)
-            ->assertJsonPath('total', 1);
             ->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.whatsapp_number', '081234567890');
     }
@@ -202,4 +193,3 @@ class ReportMandatoryValidationTest extends TestCase
         Storage::disk('public')->assertExists($filePath);
     }
 }
-

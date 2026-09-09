@@ -89,6 +89,7 @@ class ExportController extends Controller
         // Judul & Header Info
         $sheet->setCellValue('A1', 'REKAPITULASI LAPORAN EVALUASI MEDIA');
         $sheet->mergeCells('A1:F1');
+        $sheet->mergeCells('A1:G1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
@@ -169,7 +170,6 @@ class ExportController extends Controller
 
             // Row zebra striping for readability
             if ($index % 2 === 1) {
-                $sheet->getStyle("A{$rowIndex}:F{$rowIndex}")->getFill()
                 $sheet->getStyle("A{$rowIndex}:G{$rowIndex}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setRGB('F8FAFC');
@@ -203,7 +203,6 @@ class ExportController extends Controller
         }
 
         // Auto-fit column width
-        foreach (range('A', 'F') as $col) {
         foreach (range('A', 'G') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }

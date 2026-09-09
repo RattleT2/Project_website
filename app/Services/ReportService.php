@@ -137,7 +137,29 @@ class ReportService
     {
         if ($path) {
             Storage::disk('public')->delete($path);
+            $clean = $this->cleanFilePath($path);
+            if ($clean && Storage::disk('public')->exists($clean)) {
+                Storage::disk('public')->delete($clean);
+            }
         }
+    }
+
+    public function cleanFilePath(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            $value = parse_url($value, PHP_URL_PATH);
+        }
+
+        $value = ltrim((string) $value, '/');
+        if (str_starts_with($value, 'storage/')) {
+            $value = substr($value, 8);
+        }
+
+        return ltrim($value, '/');
     }
 
     private function generateReportCode(MediaType $mediaType): string
@@ -157,11 +179,6 @@ class ReportService
         throw new \Exception('Gagal membuat kode laporan.');
     }
 
-    private function cleanFilePath(?string $value): ?string
-    {
-        if (!$value) {
-            return null;
-        }
 
         if (filter_var($value, FILTER_VALIDATE_URL)) {
             $value = parse_url($value, PHP_URL_PATH);
@@ -179,6 +196,12 @@ class ReportService
     {
         foreach ($answers as $answer) {
             $value = $answer['answer_value'];
+            $questionId = $answer['question_id'] ?? null;
+            if (!$questionId) {
+                continue;
+            }
+
+            $value = $answer['answer_value'] ?? null;
             $type = $answer['answer_type'] ?? 'text';
 
             if ($type === 'file') {
@@ -187,10 +210,23 @@ class ReportService
 
             $existingAnswer = ReportAnswer::where('report_id', $report->id)
                 ->where('question_id', $answer['question_id'])
+                ->where('question_id', $questionId)
                 ->first();
+
+            // Jika nilai jawaban dikirim null atau kosong ("")
+            if ($value === null || trim((string) $value) === '') {
+                if ($existingAnswer) {
+                    if ($existingAnswer->answer_type === 'file' && $existingAnswer->answer_value) {
+                        $this->deleteFile($existingAnswer->answer_value);
+                    }
+                    $existingAnswer->delete();
+                }
+                continue;
+            }
 
             if ($existingAnswer) {
                 // Hanya hapus file lama jika file barunya memang berbeda
+                // Hapus file lama jika file barunya memang berbeda
                 if ($existingAnswer->answer_type === 'file' && $existingAnswer->answer_value && $existingAnswer->answer_value !== $value) {
                     $this->deleteFile($existingAnswer->answer_value);
                 }
@@ -203,10 +239,87 @@ class ReportService
                 ReportAnswer::create([
                     'report_id' => $report->id,
                     'question_id' => $answer['question_id'],
+                    'question_id' => $questionId,
                     'answer_value' => $value,
                     'answer_type' => $type,
                     'score_earned' => 0,
                 ]);
+            }
+        }
+
+        // Jalankan pembersihan otomatis untuk bukti dukung opsional jika jawaban utama bernilai negatif (misal "Tidak")
+        $this->cleanupNegativeOptionEvidence($report, $answers);
+    }
+
+    private function cleanupNegativeOptionEvidence(Report $report, array $answers): void
+    {
+        $allQuestions = EvaluationQuestion::all();
+
+        foreach ($answers as $answer) {
+            $questionId = $answer['question_id'] ?? null;
+            $val = trim((string) ($answer['answer_value'] ?? ''));
+
+            if (!$questionId) {
+                continue;
+            }
+
+            $question = $allQuestions->firstWhere('id', $questionId);
+            if (!$question) {
+                continue;
+            }
+
+            $qText = strtolower($question->question_text);
+            $valLower = strtolower($val);
+
+            $childQuestionIdToDelete = null;
+
+            // 1. Verifikasi Dewan Pers: Ya / Tidak
+            if (str_contains($qText, 'dewan pers') && $valLower === 'tidak') {
+                $child = $allQuestions->first(fn ($q) => $q->category === 'verifikasi' && str_contains(strtolower($q->question_text), 'upload') && !$q->is_mandatory);
+                $childQuestionIdToDelete = $child?->id;
+            }
+
+            // 2. UKW Pemred: Ada UKW Utama / Tidak UKW Utama
+            elseif (str_contains($qText, 'pimpinan redaksi') && str_contains($valLower, 'tidak')) {
+                $child = $allQuestions->first(fn ($q) => $q->category === 'kompetensi' && str_contains(strtolower($q->question_text), 'pimpinan redaksi') && str_contains(strtolower($q->question_text), 'upload') && !$q->is_mandatory);
+                $childQuestionIdToDelete = $child?->id;
+            }
+
+            // 3. Wartawan / Biro Banjar: Ada + UKW / Ada tanpa UKW / Tidak ada
+            elseif (str_contains($qText, 'wartawan atau biro') && (str_contains($valLower, 'tidak') || str_contains($valLower, 'tanpa'))) {
+                $child = $allQuestions->first(fn ($q) => $q->category === 'kompetensi' && str_contains(strtolower($q->question_text), 'wartawan') && str_contains(strtolower($q->question_text), 'upload') && !$q->is_mandatory);
+                $childQuestionIdToDelete = $child?->id;
+            }
+
+            // 4. Berita Isu Umum: Aktif / Tidak
+            elseif (str_contains($qText, 'isu umum') && $valLower === 'tidak') {
+                $child = $allQuestions->first(fn ($q) => $q->category === 'aktivitas' && str_contains(strtolower($q->question_text), 'isu umum') && str_contains(strtolower($q->question_text), 'link') && !$q->is_mandatory);
+                $childQuestionIdToDelete = $child?->id;
+            }
+
+            // 5. Berita Isu Khusus Banjar: Aktif / Tidak
+            elseif (str_contains($qText, 'kabupaten banjar') && str_contains($qText, 'aktif') && $valLower === 'tidak') {
+                $child = $allQuestions->first(fn ($q) => $q->category === 'aktivitas' && str_contains(strtolower($q->question_text), 'khusus') && str_contains(strtolower($q->question_text), 'link') && !$q->is_mandatory);
+                $childQuestionIdToDelete = $child?->id;
+            }
+
+            // 6. Rubrik / Tayangan / Siaran Khusus Media: Ada / Tidak
+            elseif ((str_contains($qText, 'rubrik') || str_contains($qText, 'tayangan') || str_contains($qText, 'siaran')) && $valLower === 'tidak') {
+                $child = $allQuestions->first(fn ($q) => str_contains(strtolower($q->question_text), 'martapura') && str_contains(strtolower($q->question_text), 'link') && !$q->is_mandatory);
+                $childQuestionIdToDelete = $child?->id;
+            }
+
+            if ($childQuestionIdToDelete) {
+                $childAnswer = ReportAnswer::where('report_id', $report->id)
+                    ->where('question_id', $childQuestionIdToDelete)
+                    ->first();
+
+                if ($childAnswer) {
+                    if ($childAnswer->answer_type === 'file' && $childAnswer->answer_value) {
+                        $this->deleteFile($childAnswer->answer_value);
+                    }
+                    $childAnswer->delete();
+                }
             }
         }
     }

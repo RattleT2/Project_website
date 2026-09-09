@@ -183,6 +183,49 @@ class ReportController extends Controller
         );
     }
 
+    public function deleteAttachment(int $reportId, int $questionId): JsonResponse
+    {
+        $report = Report::where('user_id', auth('api')->id())
+            ->where('status', 'pending')
+            ->findOrFail($reportId);
+
+        $question = \App\Models\EvaluationQuestion::findOrFail($questionId);
+        if ($question->is_mandatory) {
+            return response()->json([
+                'message' => 'Berkas pada pertanyaan wajib tidak dapat dihapus.',
+            ], 422);
+        }
+
+        $answer = ReportAnswer::where('report_id', $report->id)
+            ->where('question_id', $questionId)
+            ->first();
+
+        if ($answer) {
+            if ($answer->answer_type === 'file' && $answer->answer_value) {
+                $this->reportService->deleteFile($answer->answer_value);
+            }
+            $answer->delete();
+        }
+
+        return response()->json([
+            'message' => 'Lampiran berhasil dihapus.',
+        ]);
+    }
+
+    public function deleteStandaloneUpload(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file_path' => 'required|string',
+        ]);
+
+        $filePath = $request->input('file_path');
+        $this->reportService->deleteFile($filePath);
+
+        return response()->json([
+            'message' => 'File berhasil dihapus.',
+        ]);
+    }
+
     private function resolveAttachmentAnswer(int $reportId, int $questionId): ReportAnswer
     {
         /** @var User $user */
