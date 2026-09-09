@@ -6,12 +6,12 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-class AdminUserSeeder extends Seeder
+class AkunADMIN extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(
-            ['email' => 'admin@kominfo.go.id'],
+        User::updateOrCreate(
+            ['email' => 'kominfomtpadmin@gmail.com'],
             [
                 'name' => 'Admin Kominfo',
                 'password' => Hash::make('admin123'),

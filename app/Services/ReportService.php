@@ -312,6 +312,7 @@ class ReportService
     {
         $answers = $data['answers'] ?? [];
 
+        $rootWhatsapp = $data['whatsapp_number'] ?? $data['contact_number'] ?? $data['whatsapp'] ?? $data['phone'] ?? null;
         $rootWhatsapp = $data['whatsapp_number']
             ?? $data['contact_number']
             ?? $data['whatsapp']
