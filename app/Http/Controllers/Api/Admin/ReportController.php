@@ -183,7 +183,13 @@ class ReportController extends Controller
         $mediaNameAnswer = $report->answers
             ->first(fn ($a) => $a->question && $a->question->question_text === 'Nama Media');
         $whatsappAnswer = $report->answers
-            ->first(fn ($a) => $a->question && str_contains(strtolower($a->question->question_text), 'whatsapp'));
+            ->first(fn ($a) => $a->question && (
+                str_contains(strtolower($a->question->question_text), 'whatsapp') ||
+                str_contains(strtolower($a->question->question_text), 'kontak') ||
+                str_contains(strtolower($a->question->question_text), 'telepon') ||
+                str_contains(strtolower($a->question->question_text), 'no hp') ||
+                str_contains(strtolower($a->question->question_text), 'nomor hp')
+            ));
 
         return [
             'id' => $report->id,

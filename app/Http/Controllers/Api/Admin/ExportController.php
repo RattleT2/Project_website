@@ -144,7 +144,13 @@ class ExportController extends Controller
             $mediaName = $mediaNameAnswer?->answer_value ?? '-';
 
             $whatsappAnswer = $report->answers
-                ->first(fn ($a) => $a->question && str_contains(strtolower($a->question->question_text), 'whatsapp'));
+                ->first(fn ($a) => $a->question && (
+                    str_contains(strtolower($a->question->question_text), 'whatsapp') ||
+                    str_contains(strtolower($a->question->question_text), 'kontak') ||
+                    str_contains(strtolower($a->question->question_text), 'telepon') ||
+                    str_contains(strtolower($a->question->question_text), 'no hp') ||
+                    str_contains(strtolower($a->question->question_text), 'nomor hp')
+                ));
             $whatsappNumber = $whatsappAnswer?->answer_value ?? '-';
 
             $submittedAt = $report->submitted_at ?? $report->created_at;
