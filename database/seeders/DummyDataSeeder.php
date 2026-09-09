@@ -64,6 +64,11 @@ class DummyDataSeeder extends Seeder
         $mediaTypes = MediaType::pluck('id', 'name');
 
         $mediaNames = [
+            1 => ['Banjar Post', 'Kalsel Online', 'Berita Banua', 'Martapura News'],
+            2 => ['Radar Banjar', 'Banjar Harian', 'Koran Banua'],
+            3 => ['Banjar Elektronik', 'E-Banjar News', 'Media Digital Banjar'],
+            4 => ['TV Banjar', 'Banjar TV', 'Kalsel TV'],
+            5 => ['Radio Martapura FM', 'Radio Banjar', 'Suara Banua FM'],
             'Online' => ['Banjar Post', 'Kalsel Online', 'Berita Banua', 'Martapura News'],
             'Cetak' => ['Radar Banjar', 'Banjar Harian', 'Koran Banua'],
             'Elektronik' => ['Banjar Elektronik', 'E-Banjar News', 'Media Digital Banjar'],
@@ -72,6 +77,22 @@ class DummyDataSeeder extends Seeder
         ];
 
         $plans = [
+            [0, 1, 'disetujui'],
+            [1, 1, 'disetujui'],
+            [2, 1, 'proses'],
+            [3, 1, 'pending'],
+            [4, 2, 'disetujui'],
+            [5, 2, 'proses'],
+            [6, 2, 'pending'],
+            [7, 4, 'disetujui'],
+            [0, 4, 'proses'],
+            [1, 4, 'pending'],
+            [2, 5, 'disetujui'],
+            [3, 5, 'proses'],
+            [4, 5, 'pending'],
+            [5, 3, 'disetujui'],
+            [6, 3, 'proses'],
+            [7, 3, 'pending'],
             [0, 'Online', 'disetujui'],
             [1, 'Online', 'disetujui'],
             [2, 'Online', 'proses'],
@@ -93,6 +114,7 @@ class DummyDataSeeder extends Seeder
         $daysAgo = 0;
 
         foreach ($plans as $plan) {
+            [$userIndex, $mediaTypeId, $status] = $plan;
             [$userIndex, $typeName, $status] = $plan;
             $mediaTypeId = $mediaTypes[$typeName] ?? null;
 
@@ -103,6 +125,7 @@ class DummyDataSeeder extends Seeder
             $answers = $this->buildAnswers(
                 $questions,
                 $mediaTypeId,
+                $mediaNames[$mediaTypeId]
                 $mediaNames[$typeName]
             );
 

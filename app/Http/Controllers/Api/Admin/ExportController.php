@@ -94,11 +94,13 @@ class ExportController extends Controller
 
         $mediaTypeName = $mediaType ? $mediaType->name : 'Semua Jenis Media';
         $sheet->setCellValue('A2', "Jenis Media: {$mediaTypeName}");
+        $sheet->mergeCells('A2:F2');
         $sheet->mergeCells('A2:G2');
         $sheet->getStyle('A2')->getFont()->setItalic(true)->setSize(11);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         $sheet->setCellValue('A3', 'Tanggal Unduh: ' . now()->translatedFormat('d F Y H:i'));
+        $sheet->mergeCells('A3:F3');
         $sheet->mergeCells('A3:G3');
         $sheet->getStyle('A3')->getFont()->setSize(10);
         $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -108,6 +110,9 @@ class ExportController extends Controller
             'A5' => 'No',
             'B5' => 'Kode Media',
             'C5' => 'Nama Media',
+            'D5' => 'Tanggal Submit',
+            'E5' => 'Total Score',
+            'F5' => 'Kategori',
             'D5' => 'Nomor WhatsApp',
             'E5' => 'Tanggal Submit',
             'F5' => 'Total Score',
@@ -133,6 +138,7 @@ class ExportController extends Controller
                 'vertical' => Alignment::VERTICAL_CENTER,
             ],
         ];
+        $sheet->getStyle('A5:F5')->applyFromArray($headerStyle);
         $sheet->getStyle('A5:G5')->applyFromArray($headerStyle);
         $sheet->getRowDimension(5)->setRowHeight(26);
 
@@ -154,12 +160,16 @@ class ExportController extends Controller
             $sheet->setCellValue("C{$rowIndex}", $mediaName);
             $sheet->setCellValueExplicit("D{$rowIndex}", $whatsappNumber, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $submittedAt = $report->submitted_at ?? $report->created_at;
+            $sheet->setCellValue("D{$rowIndex}", $submittedAt ? $submittedAt->format('d/m/Y H:i') : '-');
+            $sheet->setCellValue("E{$rowIndex}", $report->total_score);
+            $sheet->setCellValue("F{$rowIndex}", $category);
             $sheet->setCellValue("E{$rowIndex}", $submittedAt ? $submittedAt->format('d/m/Y H:i') : '-');
             $sheet->setCellValue("F{$rowIndex}", $report->total_score);
             $sheet->setCellValue("G{$rowIndex}", $category);
 
             // Row zebra striping for readability
             if ($index % 2 === 1) {
+                $sheet->getStyle("A{$rowIndex}:F{$rowIndex}")->getFill()
                 $sheet->getStyle("A{$rowIndex}:G{$rowIndex}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setRGB('F8FAFC');
@@ -179,6 +189,7 @@ class ExportController extends Controller
                 ],
             ],
         ];
+        $sheet->getStyle("A5:F{$lastRow}")->applyFromArray($borderStyle);
         $sheet->getStyle("A5:G{$lastRow}")->applyFromArray($borderStyle);
 
         if ($lastRow >= 6) {
@@ -192,6 +203,7 @@ class ExportController extends Controller
         }
 
         // Auto-fit column width
+        foreach (range('A', 'F') as $col) {
         foreach (range('A', 'G') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }

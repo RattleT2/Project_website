@@ -39,6 +39,11 @@ class EvaluationQuestionSeeder extends Seeder
         $mediaTypes = \App\Models\MediaType::pluck('id', 'name');
 
         $mediaSpecificQuestions = [
+            1 => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
+            2 => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
+            3 => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
+            4 => 'Tersedia tayangan berita Kabupaten Banjar secara rutin',
+            5 => 'Tersedia siaran berita Kabupaten Banjar secara rutin',
             'Online' => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
             'Cetak' => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
             'Elektronik' => 'Tersedia menu, rubrik, atau kategori khusus pada website/media yang secara konsisten memuat berita terkait Kabupaten Banjar',
@@ -46,6 +51,14 @@ class EvaluationQuestionSeeder extends Seeder
             'Radio' => 'Tersedia siaran berita Kabupaten Banjar secara rutin',
         ];
 
+        foreach ($mediaSpecificQuestions as $mediaTypeId => $text) {
+            EvaluationQuestion::create([
+                'media_type_id' => $mediaTypeId,
+                'category' => 'sosial_media',
+                'question_text' => $text,
+                'weight' => 7,
+                'is_mandatory' => true,
+            ]);
         foreach ($mediaSpecificQuestions as $typeName => $text) {
             $mediaTypeId = $mediaTypes[$typeName] ?? null;
             if ($mediaTypeId) {

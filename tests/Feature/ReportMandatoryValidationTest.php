@@ -90,6 +90,7 @@ class ReportMandatoryValidationTest extends TestCase
                         'answer_value' => 'Media Banjar Online',
                         'answer_type' => 'text',
                     ],
+                    // Missing mandatory question2 (Akta pendirian)
                     // Missing mandatory questionWa & question2 (Akta pendirian)
                 ],
             ]);
@@ -171,11 +172,13 @@ class ReportMandatoryValidationTest extends TestCase
         $response->assertStatus(201);
         $this->assertNotNull($response->json('report.submitted_at'));
 
+        // Admin sees the submitted report
         // Admin sees the submitted report with whatsapp_number
         $adminToken = auth('api')->login($this->admin);
         $adminListResponse = $this->withHeader('Authorization', "Bearer {$adminToken}")
             ->getJson('/api/admin/reports');
         $adminListResponse->assertStatus(200)
+            ->assertJsonPath('total', 1);
             ->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.whatsapp_number', '081234567890');
     }
@@ -199,3 +202,4 @@ class ReportMandatoryValidationTest extends TestCase
         Storage::disk('public')->assertExists($filePath);
     }
 }
+
