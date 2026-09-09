@@ -136,7 +136,6 @@ class ReportService
     public function deleteFile(?string $path): void
     {
         if ($path) {
-            Storage::disk('public')->delete($path);
             $clean = $this->cleanFilePath($path);
             if ($clean && Storage::disk('public')->exists($clean)) {
                 Storage::disk('public')->delete($clean);
@@ -179,23 +178,9 @@ class ReportService
         throw new \Exception('Gagal membuat kode laporan.');
     }
 
-
-        if (filter_var($value, FILTER_VALIDATE_URL)) {
-            $value = parse_url($value, PHP_URL_PATH);
-        }
-
-        $value = ltrim($value, '/');
-        if (str_starts_with($value, 'storage/')) {
-            $value = substr($value, 8);
-        }
-
-        return ltrim($value, '/');
-    }
-
     private function saveAnswers(Report $report, array $answers): void
     {
         foreach ($answers as $answer) {
-            $value = $answer['answer_value'];
             $questionId = $answer['question_id'] ?? null;
             if (!$questionId) {
                 continue;
@@ -209,7 +194,6 @@ class ReportService
             }
 
             $existingAnswer = ReportAnswer::where('report_id', $report->id)
-                ->where('question_id', $answer['question_id'])
                 ->where('question_id', $questionId)
                 ->first();
 
@@ -225,7 +209,6 @@ class ReportService
             }
 
             if ($existingAnswer) {
-                // Hanya hapus file lama jika file barunya memang berbeda
                 // Hapus file lama jika file barunya memang berbeda
                 if ($existingAnswer->answer_type === 'file' && $existingAnswer->answer_value && $existingAnswer->answer_value !== $value) {
                     $this->deleteFile($existingAnswer->answer_value);
@@ -238,7 +221,6 @@ class ReportService
             } else {
                 ReportAnswer::create([
                     'report_id' => $report->id,
-                    'question_id' => $answer['question_id'],
                     'question_id' => $questionId,
                     'answer_value' => $value,
                     'answer_type' => $type,

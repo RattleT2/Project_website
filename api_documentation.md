@@ -518,8 +518,10 @@ Bagian ini dibagi supaya frontend tidak tertukar antara endpoint shared, pelapor
 | `GET /api/reports/{id}` | Tidak untuk panel admin | Ya | Khusus alur pelapor; admin panel sebaiknya memakai `/api/admin/reports/{id}` |
 | `POST /api/reports` | Tidak | Ya | Buat draft / submit laporan baru sekaligus |
 | `POST /api/reports/upload/{questionId}` | Tidak | Ya | Upload file lampiran form sebelum laporan dibuat |
-| `PUT /api/reports/{id}` | Tidak | Ya | Edit laporan milik sendiri saat masih `pending` |
-| `DELETE /api/reports/{id}` | Tidak | Ya | Hapus laporan milik sendiri saat masih `pending` |
+| `POST /api/reports/delete-upload` | Tidak | Ya | Batalkan / hapus file upload form sebelum laporan dibuat |
+| `PUT /api/reports/{id}` | Tidak | Ya | Edit laporan milik sendiri saat masih `pending` (dukung null & auto-cleanup) |
+| `DELETE /api/reports/{id}` | Tidak | Ya | Hapus seluruh laporan milik sendiri saat masih `pending` |
+| `DELETE /api/reports/{reportId}/answers/{questionId}` | Tidak | Ya | Hapus lampiran file / jawaban opsional tertentu pada laporan |
 | `POST /api/reports/{id}/submit` | Tidak | Ya | Finalisasi submit laporan draft |
 | `POST /api/reports/{reportId}/upload/{questionId}` | Tidak | Ya | Upload file lampiran pada laporan draft yang sudah ada |
 | `GET /api/reports/{reportId}/attachments/{questionId}/view` | Ya | Ya | Preview PDF lampiran |
@@ -699,17 +701,85 @@ Body sama seperti `POST` (semua field opsional).
   "link_url": "https://mediabanjar.com/baru",
   "answers": [
     { "question_id": 2, "answer_value": "Tidak", "answer_type": "text" },
+    { "question_id": 3, "answer_value": null, "answer_type": "file" },
     { "question_id": 14, "answer_value": "5.000 - 20.000", "answer_type": "text" }
   ]
 }
 ```
 
-> Hanya `answers` yang dikirim yang akan diperbarui. Jawaban lain tetap seperti sebelumnya.
+> **Catatan Penting untuk Frontend saat Edit / Update Jawaban:**
+> 1. **Menghapus Jawaban / Berkas Secara Eksplisit:**
+>    - Kirim `"answer_value": null` atau `""` (string kosong).
+>    - Backend akan otomatis **menghapus berkas fisik dari storage** (jika bertipe `file`) dan **menghapus baris jawaban dari database**.
+> 2. **Auto-Cleanup Saat Memilih Jawaban Negatif / "Tidak":**
+>    - Jika user mengubah pertanyaan ber-bukti dukung menjadi **"Tidak"** (misalnya Dewan Pers "Tidak", UKW Pemred "Tidak UKW Utama", Wartawan "Tidak ada", Berita Isu Umum/Khusus "Tidak"):
+>    - Backend secara otomatis mendeteksi dan **menghapus berkas lampiran serta record jawaban bukti dukung opsional yang terhubung**, sehingga frontend tidak perlu khawatir ada berkas lama yang tertinggal.
+> 3. Hanya `answers` yang dikirim yang akan diperbarui. Jawaban lain tetap seperti sebelumnya.
 
-#### Hapus Laporan (hanya status `pending`)
+---
+
+#### Hapus Jawaban / Lampiran Berkas Tertentu (Endpoint Khusus)
+```
+DELETE /api/reports/{reportId}/answers/{questionId}
+Authorization: Bearer <token>
+```
+Digunakan ketika pelapor menghapus file bukti dukung / jawaban tertentu pada laporan yang masih berstatus `pending`.
+
+**Response 200 (Berhasil):**
+```json
+{
+  "message": "Lampiran berhasil dihapus."
+}
+```
+*Backend akan menghapus file fisik dari storage dan menghapus record jawaban dari database.*
+
+**Response 422 (Jika mencoba menghapus soal wajib):**
+```json
+{
+  "message": "Berkas pada pertanyaan wajib tidak dapat dihapus."
+}
+```
+> **⚠️ Perlindungan Soal Wajib (Nomor 9 & 15 / Mandatory):**
+> Berkas pada pertanyaan wajib (seperti Akta Pendirian Perusahaan atau Link Sosial Media) **tidak dapat dihapus** melalui endpoint ini. Endpoint akan mengembalikan HTTP 422.
+
+---
+
+#### Batalkan / Hapus File Upload Standalone (Sebelum Laporan Dibuat)
+```
+POST /api/reports/delete-upload
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+Digunakan ketika user sudah meng-upload file di form (lewat `POST /api/reports/upload/{questionId}`), lalu menekan tombol "Hapus / Ganti File" sebelum form laporan utama disimpan ke server.
+
+**Request Body:**
+```json
+{
+  "file_path": "reports/questions/9/abc123xyz.pdf"
+}
+```
+
+**Response 200:**
+```json
+{
+  "message": "File berhasil dihapus."
+}
+```
+
+---
+
+#### Hapus Seluruh Laporan (hanya status `pending`)
 ```
 DELETE /api/reports/{id}
 Authorization: Bearer <token>
+```
+Menghapus seluruh laporan beserta seluruh berkas lampiran yang terkait di storage.
+
+**Response 200:**
+```json
+{
+  "message": "Laporan berhasil dihapus."
+}
 ```
 
 #### Submit Laporan
