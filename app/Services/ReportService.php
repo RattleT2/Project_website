@@ -23,9 +23,10 @@ class ReportService
     {
         $isSubmit = isset($data['submit']) && (bool) $data['submit'];
         $mediaType = MediaType::findOrFail($data['media_type_id']);
+        $answers = $this->normalizeAnswers($data);
 
         if ($isSubmit) {
-            $this->validateMandatoryQuestions($data['media_type_id'], $data['answers'] ?? []);
+            $this->validateMandatoryQuestions($data['media_type_id'], $answers);
         }
 
         $report = Report::create([
@@ -38,7 +39,7 @@ class ReportService
             'total_score' => 0,
         ]);
 
-        $this->saveAnswers($report, $data['answers'] ?? []);
+        $this->saveAnswers($report, $answers);
         $this->scoringService->calculateScore($report);
 
         return $report->fresh()->load('answers.question');
@@ -66,8 +67,9 @@ class ReportService
             $report->update(['link_url' => $data['link_url']]);
         }
 
-        if (isset($data['answers'])) {
-            $this->saveAnswers($report, $data['answers']);
+        $answers = $this->normalizeAnswers($data);
+        if (!empty($answers) || isset($data['answers'])) {
+            $this->saveAnswers($report, $answers);
         }
 
         if ($isSubmit) {
@@ -304,5 +306,50 @@ class ReportService
                 }
             }
         }
+    }
+
+    private function normalizeAnswers(array $data): array
+    {
+        $answers = $data['answers'] ?? [];
+
+        $rootWhatsapp = $data['whatsapp_number'] ?? $data['contact_number'] ?? $data['whatsapp'] ?? $data['phone'] ?? null;
+        if ($rootWhatsapp !== null && trim((string) $rootWhatsapp) !== '') {
+            $whatsappQuestion = EvaluationQuestion::where('category', 'identitas')
+                ->where(function ($q) {
+                    $q->where('question_text', 'like', '%whatsapp%')
+                      ->orWhere('question_text', 'like', '%kontak%')
+                      ->orWhere('question_text', 'like', '%telepon%');
+                })
+                ->first();
+
+            if (!$whatsappQuestion) {
+                $whatsappQuestion = EvaluationQuestion::where('category', 'identitas')
+                    ->where('question_text', 'not like', '%nama%')
+                    ->first();
+            }
+
+            if ($whatsappQuestion) {
+                $found = false;
+                foreach ($answers as &$ans) {
+                    if (isset($ans['question_id']) && $ans['question_id'] == $whatsappQuestion->id) {
+                        $ans['answer_value'] = (string) $rootWhatsapp;
+                        $ans['answer_type'] = $ans['answer_type'] ?? 'text';
+                        $found = true;
+                        break;
+                    }
+                }
+                unset($ans);
+
+                if (!$found) {
+                    $answers[] = [
+                        'question_id' => $whatsappQuestion->id,
+                        'answer_value' => (string) $rootWhatsapp,
+                        'answer_type' => 'text',
+                    ];
+                }
+            }
+        }
+
+        return $answers;
     }
 }

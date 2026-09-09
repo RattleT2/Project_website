@@ -149,9 +149,22 @@ class ExportController extends Controller
                     str_contains(strtolower($a->question->question_text), 'kontak') ||
                     str_contains(strtolower($a->question->question_text), 'telepon') ||
                     str_contains(strtolower($a->question->question_text), 'no hp') ||
-                    str_contains(strtolower($a->question->question_text), 'nomor hp')
+                    str_contains(strtolower($a->question->question_text), 'nomor hp') ||
+                    str_contains(strtolower($a->question->question_text), 'wa') ||
+                    str_contains(strtolower($a->question->question_text), 'handphone') ||
+                    str_contains(strtolower($a->question->question_text), 'ponsel')
                 ));
-            $whatsappNumber = $whatsappAnswer?->answer_value ?? '-';
+
+            if (!$whatsappAnswer) {
+                $whatsappAnswer = $report->answers->first(function ($a) {
+                    if (!$a->question) return false;
+                    $text = strtolower($a->question->question_text);
+                    return $a->question->category === 'identitas' && !str_contains($text, 'nama');
+                });
+            }
+
+            $val = trim((string) ($whatsappAnswer?->answer_value ?? ''));
+            $whatsappNumber = $val !== '' ? $val : '-';
 
             $submittedAt = $report->submitted_at ?? $report->created_at;
             $category = $this->scoringService->getCategory($report->total_score);

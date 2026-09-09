@@ -188,15 +188,29 @@ class ReportController extends Controller
                 str_contains(strtolower($a->question->question_text), 'kontak') ||
                 str_contains(strtolower($a->question->question_text), 'telepon') ||
                 str_contains(strtolower($a->question->question_text), 'no hp') ||
-                str_contains(strtolower($a->question->question_text), 'nomor hp')
+                str_contains(strtolower($a->question->question_text), 'nomor hp') ||
+                str_contains(strtolower($a->question->question_text), 'wa') ||
+                str_contains(strtolower($a->question->question_text), 'handphone') ||
+                str_contains(strtolower($a->question->question_text), 'ponsel')
             ));
+
+        if (!$whatsappAnswer) {
+            $whatsappAnswer = $report->answers->first(function ($a) {
+                if (!$a->question) return false;
+                $text = strtolower($a->question->question_text);
+                return $a->question->category === 'identitas' && !str_contains($text, 'nama');
+            });
+        }
+
+        $val = trim((string) ($whatsappAnswer?->answer_value ?? ''));
+        $whatsappNumber = $val !== '' ? $val : null;
 
         return [
             'id' => $report->id,
             'report_code' => $report->report_code,
             'media_name' => $mediaNameAnswer?->answer_value,
-            'whatsapp_number' => $whatsappAnswer?->answer_value,
-            'contact_number' => $whatsappAnswer?->answer_value,
+            'whatsapp_number' => $whatsappNumber,
+            'contact_number' => $whatsappNumber,
             'user_name' => $report->user?->name,
             'user_email' => $report->user?->email,
             'media_type' => $report->mediaType?->name,
