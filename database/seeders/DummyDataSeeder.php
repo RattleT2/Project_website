@@ -125,7 +125,7 @@ class DummyDataSeeder extends Seeder
             $answers = $this->buildAnswers(
                 $questions,
                 $mediaTypeId,
-                $mediaNames[$mediaTypeId]
+                $mediaNames[$mediaTypeId],
                 $mediaNames[$typeName]
             );
 

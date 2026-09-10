@@ -1,4 +1,4 @@
-# 📊 BAHAN PRESENTASI SISTEM INFORMASI EVALUASI & PELAPORAN MEDIA
+# 📊 PRESENTASI SISTEM INFORMASI EVALUASI & PELAPORAN MEDIA
 ### Dinas Komunikasi, Informatika, Statistik, dan Persandian Kabupaten Banjar
 
 ---
@@ -25,7 +25,110 @@ Sistem ini mentransformasi proses verifikasi berkas manual menjadi sistem digita
 
 ---
 
-## 👥 3. Fitur Utama Berdasarkan Hak Akses (Role)
+## 🗄️ 3. Struktur Database & Relasi Data
+
+Database dibagi menjadi **tabel domain aplikasi** dan **tabel infrastruktur Laravel**. Model laporan menggunakan pola data dinamis: pertanyaan disimpan sebagai baris di `evaluation_questions`, sedangkan jawaban disimpan sebagai baris di `report_answers`.
+
+### A. Tabel Domain Aplikasi
+
+| Tabel | Fungsi | Field penting |
+|---|---|---|
+| `users` | Menyimpan akun admin dan pelapor | `id`, `name`, `email` unique, `password`, `role` (`admin`/`pelapor`), `status` (`aktif`/`non-aktif`), `nip` nullable unique |
+| `media_types` | Master jenis media | `id`, `name`, `code` nullable unique |
+| `evaluation_questions` | Master pertanyaan evaluasi | `id`, `media_type_id` nullable, `category`, `question_text`, `weight`, `is_mandatory` |
+| `scoring_rules` | Pilihan jawaban dan skor per pertanyaan | `id`, `question_id`, `answer_option`, `score` |
+| `reports` | Data utama laporan pelapor | `id`, `report_code` unique nullable, `user_id`, `media_type_id`, `link_url`, `status`, `total_score`, `submitted_at`, `file_path` nullable |
+| `report_answers` | Jawaban laporan yang fleksibel/dinamis | `id`, `report_id`, `question_id`, `answer_value`, `answer_type` (`text`/`file`/`url`), `score_earned` |
+
+### B. Relasi Utama
+
+```mermaid
+erDiagram
+   USERS ||--o{ REPORTS : membuat
+   MEDIA_TYPES ||--o{ REPORTS : memiliki
+   MEDIA_TYPES ||--o{ EVALUATION_QUESTIONS : mengatur
+   EVALUATION_QUESTIONS ||--o{ SCORING_RULES : memiliki
+   EVALUATION_QUESTIONS ||--o{ REPORT_ANSWERS : dijawab
+   REPORTS ||--o{ REPORT_ANSWERS : memiliki
+
+   USERS {
+      bigint id PK
+      string name
+      string email UK
+      enum role
+      enum status
+      string nip UK
+   }
+   MEDIA_TYPES {
+      bigint id PK
+      string name
+      string code UK
+   }
+   EVALUATION_QUESTIONS {
+      bigint id PK
+      bigint media_type_id FK
+      string category
+      text question_text
+      integer weight
+      boolean is_mandatory
+   }
+   SCORING_RULES {
+      bigint id PK
+      bigint question_id FK
+      string answer_option
+      integer score
+   }
+   REPORTS {
+      bigint id PK
+      bigint user_id FK
+      bigint media_type_id FK
+      string report_code UK
+      enum status
+      integer total_score
+      timestamp submitted_at
+   }
+   REPORT_ANSWERS {
+      bigint id PK
+      bigint report_id FK
+      bigint question_id FK
+      string answer_value
+      enum answer_type
+      integer score_earned
+   }
+```
+
+### C. Alur Data Laporan
+
+1. Pelapor memilih satu data dari `media_types`.
+2. Sistem mengambil pertanyaan global (`media_type_id` null) dan pertanyaan khusus media dari `evaluation_questions`.
+3. Sistem membuat satu baris `reports` dengan status `pending`.
+4. Setiap jawaban disimpan sebagai baris `report_answers` dan dihubungkan ke pertanyaan melalui `question_id`.
+5. Aturan skor dibaca dari `scoring_rules`, lalu hasil per jawaban disimpan pada `score_earned`.
+6. Total skor disimpan pada `reports.total_score`; kategori akhir dihitung oleh accessor model, bukan kolom database.
+7. Waktu finalisasi disimpan pada `reports.submitted_at`.
+
+### D. Penyimpanan Lampiran
+
+- Tidak ada tabel lampiran terpisah.
+- Lampiran pertanyaan disimpan pada `report_answers.answer_value` dengan `answer_type = file`.
+- `answer_value` berisi path file di disk public, misalnya `reports/questions/45/namafile.pdf`.
+- `reports.file_path` masih tersedia sebagai field laporan umum, tetapi alur lampiran per pertanyaan menggunakan `report_answers`.
+- Validasi PDF dan ukuran maksimal 5 MB berada di layer aplikasi, bukan di database.
+
+### E. Tabel Infrastruktur Laravel
+
+| Tabel | Fungsi |
+|---|---|
+| `password_reset_tokens` | Menyimpan token reset password berdasarkan email |
+| `sessions` | Menyimpan session aplikasi |
+| `cache`, `cache_locks` | Menyimpan cache dan lock |
+| `jobs`, `job_batches`, `failed_jobs` | Queue job, batch job, dan job yang gagal |
+
+> Database tidak memiliki tabel audit, soft delete, atau tabel khusus identitas Google OAuth. Data seperti nama media, nomor WhatsApp, dan jawaban evaluasi disimpan secara dinamis melalui `report_answers` sesuai `question_id`.
+
+---
+
+## 👥 4. Fitur Utama Berdasarkan Hak Akses (Role)
 
 ### A. Hak Akses: PELAPOR (Perusahaan Media)
 
@@ -80,7 +183,7 @@ Sistem ini mentransformasi proses verifikasi berkas manual menjadi sistem digita
 
 ---
 
-## 🧮 4. Sistem Penilaian Otomatis (Scoring Engine)
+## 🧮 5. Sistem Penilaian Otomatis (Scoring Engine)
 
 Sistem menggunakan algoritma kalkulasi bobot otomatis berdasarkan regulasi dan instrumen evaluasi media:
 
@@ -109,7 +212,7 @@ $$\begin{cases}
 
 ---
 
-## 🔒 5. Fitur Keamanan Sistem (Security Architecture)
+## 🔒 6. Fitur Keamanan Sistem (Security Architecture)
 
 1. **JSON Web Token (JWT) Authentication:**
    - Otentikasi berbasis stateless token Bearer (`Authorization: Bearer <token>`).
@@ -139,7 +242,7 @@ $$\begin{cases}
 
 ---
 
-## 🌐 6. Ringkasan Endpoint API Utama
+## 🌐 7. Ringkasan Endpoint API Utama
 
 ### Autentikasi & Publik
 - `GET /api/captcha` & `GET /api/captcha/reload` : Generate gambar CAPTCHA
@@ -173,7 +276,7 @@ $$\begin{cases}
 
 ---
 
-## 🌟 7. Keunggulan & Inovasi Khusus Sistem
+## 🌟 8. Keunggulan & Inovasi Khusus Sistem
 
 1. **Auto Self-Healing Database:** Sistem secara otomatis mendeteksi dan melengkapi struktur pertanyaan kuesioner pada database tanpa perlu menjalankan perintah seeder manual.
 2. **Smart Negative Option Cleanup:** Penghapusan berkas otomatis jika user memilih opsi "Tidak" sehingga penyimpanan server tetap efisien.
