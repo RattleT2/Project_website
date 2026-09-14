@@ -110,27 +110,96 @@ Authorization: Bearer <token>
 GET /api/auth/me
 Authorization: Bearer <token>
 ```
+**Response 200:**
+```json
+{
+  "id": 1,
+  "name": "Budi Santoso",
+  "email": "budi@example.com",
+  "role": "pelapor",
+  "status": "aktif",
+  "avatar": "avatars/xyz.jpg",
+  "avatar_url": "http://localhost:8000/storage/avatars/xyz.jpg",
+  "created_at": "2026-08-10T03:15:52.000000Z",
+  "updated_at": "2026-08-10T03:15:52.000000Z"
+}
+```
 
 #### Update Profile
 ```
 PUT /api/auth/me
+PUT /api/auth/me  (atau POST /api/auth/me dengan multipart/form-data)
 Authorization: Bearer <token>
 ```
 | Field | Type | Required |
 |---|---|---|
 | `name` | string | Ya |
+| Field | Type | Required | Keterangan |
+|---|---|---|---|
+| `name` | string | Opsional | Nama lengkap pengguna (maks 255 karakter) |
+| `avatar` | file (image) | Opsional | File gambar (jpeg, png, jpg, webp, maks 2MB) |
+| `delete_avatar` | boolean | Opsional | Set `true` untuk menghapus foto profil |
 
 **Request Body: **
+**Request Body (JSON):**
 ```json
 {
   "name": "Budi Santoso"
+  "name": "Budi Santoso",
+  "delete_avatar": false
 }
 ```
+
+**Request Body (Multipart Form-Data jika upload avatar):**
+- `name`: `Budi Santoso`
+- `avatar`: `(binary image file)`
 
 **Response 200:**
 ```json
 {
   "message": "Profil berhasil diperbarui.",
+  "user": {
+    "id": 1,
+    "name": "Budi Santoso",
+    "email": "budi@example.com",
+    "role": "pelapor",
+    "status": "aktif",
+    "avatar": "avatars/xyz.jpg",
+    "avatar_url": "http://localhost:8000/storage/avatars/xyz.jpg",
+    "updated_at": "2026-09-14T08:00:00.000000Z"
+  }
+}
+```
+
+#### Upload Avatar (Dedicated Endpoint)
+```
+POST /api/auth/me/avatar
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+```
+| Field | Type | Required | Keterangan |
+|---|---|---|---|
+| `avatar` | file (image) | Ya | File gambar (jpeg, png, jpg, webp, maks 2MB) |
+
+**Response 200:**
+```json
+{
+  "message": "Foto profil berhasil diunggah.",
+  "avatar": "avatars/xyz.jpg",
+  "avatar_url": "http://localhost:8000/storage/avatars/xyz.jpg",
+  "user": { ... }
+}
+```
+
+#### Delete Avatar
+```
+DELETE /api/auth/me/avatar
+Authorization: Bearer <token>
+```
+**Response 200:**
+```json
+{
+  "message": "Foto profil berhasil dihapus.",
   "user": { ... }
 }
 ```

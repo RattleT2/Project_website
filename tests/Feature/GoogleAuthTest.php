@@ -32,6 +32,7 @@ class GoogleAuthTest extends TestCase
         $abstractUser = Mockery::mock('Laravel\Socialite\Two\User');
         $abstractUser->shouldReceive('getEmail')->andReturn('usergoogle@example.com');
         $abstractUser->shouldReceive('getName')->andReturn('Google User Test');
+        $abstractUser->shouldReceive('getAvatar')->andReturn('https://lh3.googleusercontent.com/a/test-avatar.jpg');
 
         $provider = Mockery::mock('Laravel\Socialite\Contracts\Provider');
         $provider->shouldReceive('stateless->user')->andReturn($abstractUser);
@@ -66,6 +67,7 @@ class GoogleAuthTest extends TestCase
         $abstractUser = Mockery::mock('Laravel\Socialite\Two\User');
         $abstractUser->shouldReceive('getEmail')->andReturn('admin_google@kominfo.go.id');
         $abstractUser->shouldReceive('getName')->andReturn('Admin Google User');
+        $abstractUser->shouldReceive('getAvatar')->andReturn(null);
 
         $provider = Mockery::mock('Laravel\Socialite\Contracts\Provider');
         $provider->shouldReceive('stateless->user')->andReturn($abstractUser);

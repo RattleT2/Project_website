@@ -34,6 +34,7 @@ Database dibagi menjadi **tabel domain aplikasi** dan **tabel infrastruktur Lara
 | Tabel | Fungsi | Field penting |
 |---|---|---|
 | `users` | Menyimpan akun admin dan pelapor | `id`, `name`, `email` unique, `password`, `role` (`admin`/`pelapor`), `status` (`aktif`/`non-aktif`), `nip` nullable unique |
+| `users` | Menyimpan akun admin dan pelapor | `id`, `name`, `email` unique, `avatar` nullable, `password`, `role` (`admin`/`pelapor`), `status` (`aktif`/`non-aktif`), `nip` nullable unique |
 | `media_types` | Master jenis media | `id`, `name`, `code` nullable unique |
 | `evaluation_questions` | Master pertanyaan evaluasi | `id`, `media_type_id` nullable, `category`, `question_text`, `weight`, `is_mandatory` |
 | `scoring_rules` | Pilihan jawaban dan skor per pertanyaan | `id`, `question_id`, `answer_option`, `score` |
@@ -55,6 +56,7 @@ erDiagram
       bigint id PK
       string name
       string email UK
+      string avatar
       enum role
       enum status
       string nip UK
@@ -138,6 +140,7 @@ erDiagram
    - Fitur *Remember Me* (Token bertahan 30 hari vs 1 jam).
    - Fitur Lupa & Reset Password aman via Token Email (berlaku 60 menit).
    - Manajemen Profil & Ganti Password.
+   - Manajemen Profil (Ubah Nama, Upload/Hapus Foto Profil Avatar) & Ganti Password.
 
 2. **Pengisian Formulir & Kuesioner Evaluasi:**
    - **Kuesioner Dinamis:** Formulir otomatis menyesuaikan dengan Jenis Media yang dipilih (Online, Cetak, Elektronik, TV, Radio).

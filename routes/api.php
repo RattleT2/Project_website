@@ -25,6 +25,9 @@ Route::prefix('auth')->group(function () {
         Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('me', [AuthController::class, 'me']);
         Route::put('me', [AuthController::class, 'updateProfile']);
+        Route::match(['put', 'post'], 'me', [AuthController::class, 'updateProfile']);
+        Route::post('me/avatar', [AuthController::class, 'uploadAvatar']);
+        Route::delete('me/avatar', [AuthController::class, 'deleteAvatar']);
         Route::put('me/password', [AuthController::class, 'changePassword']);
     });
 });

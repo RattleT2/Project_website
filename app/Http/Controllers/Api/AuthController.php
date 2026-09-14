@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -86,15 +87,84 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'name' => 'sometimes|required|string|max:255',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'delete_avatar' => 'nullable|boolean',
         ]);
 
+        /** @var \App\Models\User $user */
         $user = auth('api')->user();
         $user->update([
             'name' => $validated['name'],
         ]);
 
+        $data = [];
+        if (isset($validated['name'])) {
+            $data['name'] = $validated['name'];
+        }
+
+        // Handle avatar upload jika file dikirim
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $data['avatar'] = $path;
+        } elseif ($request->boolean('delete_avatar')) {
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $data['avatar'] = null;
+        }
+
+        if (!empty($data)) {
+            $user->update($data);
+        }
+
         return response()->json([
             'message' => 'Profil berhasil diperbarui.',
+            'user' => $user->fresh(),
+        ]);
+    }
+
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = auth('api')->user();
+
+        if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return response()->json([
+            'message' => 'Foto profil berhasil diunggah.',
+            'avatar' => $path,
+            'avatar_url' => $user->fresh()->avatar_url,
+            'user' => $user->fresh(),
+        ]);
+    }
+
+    public function deleteAvatar(): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = auth('api')->user();
+
+        if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $user->update(['avatar' => null]);
+
+        return response()->json([
+            'message' => 'Foto profil berhasil dihapus.',
             'user' => $user->fresh(),
         ]);
     }
@@ -195,6 +265,7 @@ class AuthController extends Controller
                 'password' => Hash::make(Str::random(16)),
                 'role' => 'pelapor',
                 'status' => 'aktif',
+                'avatar' => $googleUser->getAvatar(),
             ]
         );
 
