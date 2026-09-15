@@ -60,9 +60,9 @@ class ReportController extends Controller
 
         $report = $query->findOrFail($id);
 
-        $report->setRelation('answers', $report->answers->map(function (ReportAnswer $answer) {
+        $report->setRelation('answers', $report->answers->map(function (ReportAnswer $answer) use ($report) {
             if ($answer->answer_type === 'file' && $answer->answer_value) {
-                $answer->file_url = Storage::url($answer->answer_value);
+                $answer->file_url = url("/api/reports/{$report->id}/attachments/{$answer->question_id}/view");
             }
 
             return $answer;
@@ -88,12 +88,12 @@ class ReportController extends Controller
         $report = Report::where('user_id', auth('api')->id())->findOrFail($id);
 
         if ($report->status !== 'pending') {
-            return response()->json(['message' => 'Laporan tidak dapat dihapus karena sudah diproses.'], 400);
+            return response()->json(['message' => 'Hanya laporan pending yang dapat dihapus.'], 422);
         }
 
         foreach ($report->answers as $answer) {
             if ($answer->answer_type === 'file' && $answer->answer_value) {
-                Storage::disk('public')->delete($answer->answer_value);
+                $this->reportService->deleteFile($answer->answer_value);
             }
         }
 
@@ -126,7 +126,6 @@ class ReportController extends Controller
         return response()->json([
             'message' => 'File berhasil diupload.',
             'file_path' => $path,
-            'url' => Storage::url($path),
         ]);
     }
 
@@ -159,7 +158,7 @@ class ReportController extends Controller
             'message' => 'File berhasil diupload.',
             'answer' => $answer,
             'file_path' => $path,
-            'url' => Storage::url($path),
+            'url' => url("/api/reports/{$report->id}/attachments/{$questionId}/view"),
         ]);
     }
 
@@ -167,7 +166,7 @@ class ReportController extends Controller
     {
         $answer = $this->resolveAttachmentAnswer($reportId, $questionId);
 
-        return response()->file(Storage::disk('public')->path($answer->answer_value), [
+        return response()->file(Storage::disk(ReportService::ATTACHMENT_DISK)->path($answer->answer_value), [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.basename($answer->answer_value).'"',
         ]);
@@ -178,7 +177,7 @@ class ReportController extends Controller
         $answer = $this->resolveAttachmentAnswer($reportId, $questionId);
 
         return response()->download(
-            Storage::disk('public')->path($answer->answer_value),
+            Storage::disk(ReportService::ATTACHMENT_DISK)->path($answer->answer_value),
             basename($answer->answer_value)
         );
     }
@@ -283,7 +282,7 @@ class ReportController extends Controller
         }
         $cleanPath = ltrim($cleanPath, '/');
 
-        if (!Storage::disk('public')->exists($cleanPath)) {
+        if (!Storage::disk(ReportService::ATTACHMENT_DISK)->exists($cleanPath)) {
             abort(404, 'File lampiran tidak ditemukan.');
         }
 

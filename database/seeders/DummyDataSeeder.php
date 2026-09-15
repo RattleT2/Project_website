@@ -16,6 +16,11 @@ class DummyDataSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->environment('production')) {
+            $this->command->warn('DummyDataSeeder diabaikan di environment production.');
+            return;
+        }
+
         if (Report::whereNotNull('report_code')->exists()) {
             $this->command->warn('Data dummy laporan sudah ada. Lewati pembuatan laporan.');
             return;
@@ -115,7 +120,6 @@ class DummyDataSeeder extends Seeder
         $daysAgo = 0;
 
         foreach ($plans as $plan) {
-            [$userIndex, $mediaTypeId, $status] = $plan;
             [$userIndex, $typeName, $status] = $plan;
             $mediaTypeId = $mediaTypes[$typeName] ?? null;
 
@@ -126,8 +130,6 @@ class DummyDataSeeder extends Seeder
             $answers = $this->buildAnswers(
                 $questions,
                 $mediaTypeId,
-                $mediaNames[$mediaTypeId],
-                $mediaNames[$typeName]
                 $mediaNames[$typeName] ?? ['Media Banjar']
             );
 
@@ -178,13 +180,12 @@ class DummyDataSeeder extends Seeder
                 ];
             } elseif (str_contains($text, 'upload')) {
                 $filePath = "dummy/dokumen-q{$question->id}.pdf";
-                if (!Storage::disk('public')->exists($filePath)) {
-                    Storage::disk('public')->put($filePath, $dummyPdfContent);
+                if (!Storage::disk('local')->exists($filePath)) {
+                    Storage::disk('local')->put($filePath, $dummyPdfContent);
                 }
 
                 $answers[] = [
                     'question_id' => $question->id,
-                    'answer_value' => "dummy/dokumen-q{$question->id}.pdf",
                     'answer_value' => $filePath,
                     'answer_type' => 'file',
                 ];

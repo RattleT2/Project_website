@@ -20,11 +20,10 @@ Route::prefix('auth')->group(function () {
     Route::get('google', [AuthController::class, 'redirectToGoogle']);
     Route::get('google/callback', [AuthController::class, 'handleGoogleCallback']);
 
-    Route::middleware('auth:api')->group(function () {
+    Route::middleware(['auth:api', 'active'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('me', [AuthController::class, 'me']);
-        Route::put('me', [AuthController::class, 'updateProfile']);
         Route::match(['put', 'post'], 'me', [AuthController::class, 'updateProfile']);
         Route::post('me/avatar', [AuthController::class, 'uploadAvatar']);
         Route::delete('me/avatar', [AuthController::class, 'deleteAvatar']);
@@ -36,7 +35,7 @@ Route::get('media-types', [SharedController::class, 'mediaTypes']);
 Route::get('evaluation-questions', [SharedController::class, 'evaluationQuestions']);
 Route::get('evaluation-questions/{mediaTypeId}', [SharedController::class, 'questionsByMediaType']);
 
-Route::middleware('auth:api')->prefix('reports')->group(function () {
+Route::middleware(['auth:api', 'active'])->prefix('reports')->group(function () {
     // Melihat laporan: pelapor (laporan sendiri) ATAU admin (semua laporan)
     Route::get('/', [ReportController::class, 'index'])->middleware('role:pelapor,admin');
     Route::get('{id}', [ReportController::class, 'show'])->middleware('role:pelapor,admin');
@@ -54,7 +53,7 @@ Route::middleware('auth:api')->prefix('reports')->group(function () {
     Route::delete('{reportId}/answers/{questionId}', [ReportController::class, 'deleteAttachment'])->whereNumber(['reportId', 'questionId'])->middleware('role:pelapor');
 });
 
-Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:api', 'active', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('dashboard', [AdminReportController::class, 'dashboard']);
 
     Route::prefix('users')->group(function () {

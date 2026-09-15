@@ -63,11 +63,11 @@ class ReportOptionalAttachmentCleanupTest extends TestCase
 
     public function test_changing_parent_to_tidak_deletes_optional_supporting_file_and_answer(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $token = auth('api')->login($this->pelapor);
 
         $fakeFilePath = 'reports/questions/' . $this->qUploadDewanPers->id . '/test_dewan_pers.pdf';
-        Storage::disk('public')->put($fakeFilePath, 'fake content');
+        Storage::disk('local')->put($fakeFilePath, 'fake content');
 
         // Create initial draft with "Ya" and uploaded file
         $report = Report::create([
@@ -91,7 +91,7 @@ class ReportOptionalAttachmentCleanupTest extends TestCase
             'answer_type' => 'file',
         ]);
 
-        Storage::disk('public')->assertExists($fakeFilePath);
+        Storage::disk('local')->assertExists($fakeFilePath);
         $this->assertDatabaseHas('report_answers', ['question_id' => $this->qUploadDewanPers->id]);
 
         // Update parent to "Tidak"
@@ -109,7 +109,7 @@ class ReportOptionalAttachmentCleanupTest extends TestCase
         $response->assertStatus(200);
 
         // File must be deleted from storage
-        Storage::disk('public')->assertMissing($fakeFilePath);
+        Storage::disk('local')->assertMissing($fakeFilePath);
 
         // Child answer record must be removed
         $this->assertDatabaseMissing('report_answers', [
@@ -120,11 +120,11 @@ class ReportOptionalAttachmentCleanupTest extends TestCase
 
     public function test_explicit_delete_attachment_endpoint(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $token = auth('api')->login($this->pelapor);
 
         $fakeFilePath = 'reports/questions/' . $this->qUploadDewanPers->id . '/test.pdf';
-        Storage::disk('public')->put($fakeFilePath, 'content');
+        Storage::disk('local')->put($fakeFilePath, 'content');
 
         $report = Report::create([
             'user_id' => $this->pelapor->id,
@@ -146,7 +146,7 @@ class ReportOptionalAttachmentCleanupTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('message', 'Lampiran berhasil dihapus.');
 
-        Storage::disk('public')->assertMissing($fakeFilePath);
+        Storage::disk('local')->assertMissing($fakeFilePath);
         $this->assertDatabaseMissing('report_answers', [
             'report_id' => $report->id,
             'question_id' => $this->qUploadDewanPers->id,
@@ -173,11 +173,11 @@ class ReportOptionalAttachmentCleanupTest extends TestCase
 
     public function test_standalone_delete_upload_endpoint(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $token = auth('api')->login($this->pelapor);
 
         $fakeFilePath = 'reports/questions/99/temp.pdf';
-        Storage::disk('public')->put($fakeFilePath, 'temp content');
+        Storage::disk('local')->put($fakeFilePath, 'temp content');
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->postJson('/api/reports/delete-upload', [
@@ -187,7 +187,7 @@ class ReportOptionalAttachmentCleanupTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('message', 'File berhasil dihapus.');
 
-        Storage::disk('public')->assertMissing($fakeFilePath);
+        Storage::disk('local')->assertMissing($fakeFilePath);
     }
 }
 

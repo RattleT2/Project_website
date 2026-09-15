@@ -86,7 +86,6 @@ class AuthController extends Controller
     public function updateProfile(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
             'name' => 'sometimes|required|string|max:255',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'delete_avatar' => 'nullable|boolean',
@@ -94,9 +93,6 @@ class AuthController extends Controller
 
         /** @var \App\Models\User $user */
         $user = auth('api')->user();
-        $user->update([
-            'name' => $validated['name'],
-        ]);
 
         $data = [];
         if (isset($validated['name'])) {

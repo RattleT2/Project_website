@@ -27,7 +27,7 @@ class ReportAttachmentAuthorizationTest extends TestCase
     {
         parent::setUp();
 
-        Storage::fake('public');
+        Storage::fake('local');
 
         $this->pelaporA = User::factory()->create([
             'role' => 'pelapor',
@@ -69,7 +69,7 @@ class ReportAttachmentAuthorizationTest extends TestCase
     public function test_pelapor_can_view_and_download_their_own_attachment(): void
     {
         $filePath = UploadedFile::fake()->create('akta.pdf', 100, 'application/pdf')
-            ->store('reports/questions/' . $this->question->id, 'public');
+            ->store('reports/questions/' . $this->question->id, 'local');
 
         ReportAnswer::create([
             'report_id' => $this->reportA->id,
@@ -99,7 +99,7 @@ class ReportAttachmentAuthorizationTest extends TestCase
     public function test_pelapor_cannot_view_or_download_another_pelapors_attachment(): void
     {
         $filePath = UploadedFile::fake()->create('akta.pdf', 100, 'application/pdf')
-            ->store('reports/questions/' . $this->question->id, 'public');
+            ->store('reports/questions/' . $this->question->id, 'local');
 
         ReportAnswer::create([
             'report_id' => $this->reportA->id,
@@ -127,7 +127,7 @@ class ReportAttachmentAuthorizationTest extends TestCase
     public function test_admin_can_view_and_download_any_pelapors_attachment(): void
     {
         $filePath = UploadedFile::fake()->create('akta.pdf', 100, 'application/pdf')
-            ->store('reports/questions/' . $this->question->id, 'public');
+            ->store('reports/questions/' . $this->question->id, 'local');
 
         ReportAnswer::create([
             'report_id' => $this->reportA->id,
@@ -187,7 +187,7 @@ class ReportAttachmentAuthorizationTest extends TestCase
     public function test_pelapor_cannot_delete_standalone_file_belonging_to_another_user(): void
     {
         $file = UploadedFile::fake()->create('other.pdf', 50, 'application/pdf');
-        $filePath = $file->store('reports/questions/' . $this->question->id, 'public');
+        $filePath = $file->store('reports/questions/' . $this->question->id, 'local');
 
         // File is attached to Pelapor A's report
         ReportAnswer::create([
@@ -207,7 +207,7 @@ class ReportAttachmentAuthorizationTest extends TestCase
             ]);
 
         $response->assertStatus(403);
-        Storage::disk('public')->assertExists($filePath);
+        Storage::disk('local')->assertExists($filePath);
     }
 
     public function test_standalone_delete_rejects_invalid_path(): void

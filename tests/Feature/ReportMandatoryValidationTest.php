@@ -138,6 +138,9 @@ class ReportMandatoryValidationTest extends TestCase
 
     public function test_submitting_with_all_mandatory_questions_succeeds_and_appears_in_admin(): void
     {
+        Storage::fake('local');
+        Storage::disk('local')->put('reports/questions/2/akta.pdf', '%PDF-1.4 dummy content');
+
         $pelaporToken = auth('api')->login($this->pelapor);
 
         $response = $this->withHeader('Authorization', "Bearer {$pelaporToken}")
@@ -176,7 +179,7 @@ class ReportMandatoryValidationTest extends TestCase
 
     public function test_standalone_file_upload_returns_file_path(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $pelaporToken = auth('api')->login($this->pelapor);
         $file = UploadedFile::fake()->create('akta_perusahaan.pdf', 100, 'application/pdf');
@@ -187,10 +190,10 @@ class ReportMandatoryValidationTest extends TestCase
             ]);
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['message', 'file_path', 'url']);
+            ->assertJsonStructure(['message', 'file_path']);
 
         $filePath = $response->json('file_path');
-        Storage::disk('public')->assertExists($filePath);
+        Storage::disk('local')->assertExists($filePath);
     }
 
     public function test_pelapor_can_create_multiple_consecutive_reports_with_unique_codes(): void

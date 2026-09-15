@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\UpdateReportStatusRequest;
 use App\Models\Report;
 use App\Models\ReportAnswer;
 use App\Models\User;
+use App\Services\ReportService;
 use App\Services\ScoringService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,10 +17,12 @@ use Illuminate\Support\Facades\Storage;
 class ReportController extends Controller
 {
     protected ScoringService $scoringService;
+    protected ReportService $reportService;
 
-    public function __construct(ScoringService $scoringService)
+    public function __construct(ScoringService $scoringService, ReportService $reportService)
     {
         $this->scoringService = $scoringService;
+        $this->reportService = $reportService;
     }
 
     public function index(Request $request): JsonResponse
@@ -82,9 +85,9 @@ class ReportController extends Controller
     {
         $report = Report::with(['user', 'mediaType', 'answers.question.scoringRules'])->findOrFail($id);
 
-        $report->setRelation('answers', $report->answers->map(function (ReportAnswer $answer) {
+        $report->setRelation('answers', $report->answers->map(function (ReportAnswer $answer) use ($report) {
             if ($answer->answer_type === 'file' && $answer->answer_value) {
-                $answer->file_url = Storage::url($answer->answer_value);
+                $answer->file_url = url("/api/reports/{$report->id}/attachments/{$answer->question_id}/view");
             }
 
             return $answer;
@@ -118,26 +121,11 @@ class ReportController extends Controller
         ]);
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(\App\Http\Requests\Admin\UpdateReportRequest $request, int $id): JsonResponse
     {
         $report = Report::findOrFail($id);
 
-        if (isset($request->answers)) {
-            foreach ($request->answers as $answerData) {
-                $report->answers()
-                    ->where('question_id', $answerData['question_id'])
-                    ->update([
-                        'answer_value' => $answerData['answer_value'],
-                        'answer_type' => $answerData['answer_type'] ?? 'text',
-                    ]);
-            }
-
-            $this->scoringService->calculateScore($report);
-        }
-
-        if ($request->filled('media_type_id')) {
-            $report->update(['media_type_id' => $request->media_type_id]);
-        }
+        $report = $this->reportService->updateReport($report, $request->validated(), true);
 
         return response()->json([
             'message' => 'Laporan berhasil diperbarui.',

@@ -12,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class ReportService
 {
+    public const ATTACHMENT_DISK = 'local';
+
     protected ScoringService $scoringService;
 
     public function __construct(ScoringService $scoringService)
@@ -45,9 +47,9 @@ class ReportService
         return $report->fresh()->load('answers.question');
     }
 
-    public function updateReport(Report $report, array $data): Report
+    public function updateReport(Report $report, array $data, bool $isAdmin = false): Report
     {
-        if ($report->status !== 'pending') {
+        if (!$isAdmin && $report->status !== 'pending') {
             throw new \Exception('Laporan tidak dapat diedit karena sudah diproses.');
         }
 
@@ -72,7 +74,7 @@ class ReportService
             $this->saveAnswers($report, $answers);
         }
 
-        if ($isSubmit) {
+        if ($isSubmit && !$isAdmin) {
             $this->submitReport($report);
         } else {
             $this->scoringService->calculateScore($report);
@@ -132,15 +134,15 @@ class ReportService
 
     public function uploadFile(UploadedFile $file, int $questionId): string
     {
-        return $file->store("reports/questions/{$questionId}", 'public');
+        return $file->store("reports/questions/{$questionId}", self::ATTACHMENT_DISK);
     }
 
     public function deleteFile(?string $path): void
     {
         if ($path) {
             $clean = $this->cleanFilePath($path);
-            if ($clean && Storage::disk('public')->exists($clean)) {
-                Storage::disk('public')->delete($clean);
+            if ($clean && Storage::disk(self::ATTACHMENT_DISK)->exists($clean)) {
+                Storage::disk(self::ATTACHMENT_DISK)->delete($clean);
             }
         }
     }
@@ -198,10 +200,22 @@ class ReportService
 
     private function saveAnswers(Report $report, array $answers): void
     {
+        $validQuestions = EvaluationQuestion::whereNull('media_type_id')
+            ->orWhere('media_type_id', $report->media_type_id)
+            ->pluck('id')
+            ->flip();
+
         foreach ($answers as $answer) {
             $questionId = $answer['question_id'] ?? null;
             if (!$questionId) {
                 continue;
+            }
+
+            // Validasi: Pertanyaan harus berlaku untuk jenis media ini
+            if (!isset($validQuestions[$questionId])) {
+                throw ValidationException::withMessages([
+                    'answers' => ["Pertanyaan ID {$questionId} tidak berlaku untuk jenis media ini."],
+                ]);
             }
 
             $value = $answer['answer_value'] ?? null;
@@ -209,6 +223,13 @@ class ReportService
 
             if ($type === 'file') {
                 $value = $this->cleanFilePath($value);
+
+                // Validasi: Jika tipe file diisi, pastikan file fisik tersimpan di disk private (local)
+                if ($value && !Storage::disk(self::ATTACHMENT_DISK)->exists($value)) {
+                    throw ValidationException::withMessages([
+                        'answers' => ["File lampiran untuk pertanyaan ID {$questionId} tidak ditemukan di server."],
+                    ]);
+                }
             }
 
             $existingAnswer = ReportAnswer::where('report_id', $report->id)

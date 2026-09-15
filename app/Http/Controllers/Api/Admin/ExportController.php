@@ -186,12 +186,12 @@ class ExportController extends Controller
             $category = $this->scoringService->getCategory($report->total_score);
 
             $sheet->setCellValue("A{$rowIndex}", $index + 1);
-            $sheet->setCellValue("B{$rowIndex}", $report->report_code ?? '-');
-            $sheet->setCellValue("C{$rowIndex}", $mediaName);
-            $sheet->setCellValueExplicit("D{$rowIndex}", $whatsappNumber, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValue("E{$rowIndex}", $submittedAt ? $submittedAt->format('d/m/Y H:i') : '-');
+            $sheet->setCellValueExplicit("B{$rowIndex}", $this->sanitizeForSpreadsheet($report->report_code), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit("C{$rowIndex}", $this->sanitizeForSpreadsheet($mediaName), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit("D{$rowIndex}", $this->sanitizeForSpreadsheet($whatsappNumber), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit("E{$rowIndex}", $submittedAt ? $submittedAt->format('d/m/Y H:i') : '-', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $sheet->setCellValue("F{$rowIndex}", $report->total_score);
-            $sheet->setCellValue("G{$rowIndex}", $category);
+            $sheet->setCellValueExplicit("G{$rowIndex}", $this->sanitizeForSpreadsheet($category), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
 
             // Row zebra striping for readability
             if ($index % 2 === 1) {
@@ -245,5 +245,22 @@ class ExportController extends Controller
                 'Cache-Control' => 'max-age=0',
             ]
         );
+    }
+
+    /**
+     * Menetralisir input teks dari potensi Formula Injection pada spreadsheet.
+     */
+    private function sanitizeForSpreadsheet(?string $value): string
+    {
+        if ($value === null || $value === '') {
+            return '-';
+        }
+
+        $trimmed = trim((string) $value);
+        if (in_array(substr($trimmed, 0, 1), ['=', '+', '-', '@', "\t", "\r"])) {
+            return "'" . $trimmed;
+        }
+
+        return $trimmed;
     }
 }
