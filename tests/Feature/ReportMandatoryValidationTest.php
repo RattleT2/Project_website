@@ -192,4 +192,33 @@ class ReportMandatoryValidationTest extends TestCase
         $filePath = $response->json('file_path');
         Storage::disk('public')->assertExists($filePath);
     }
+
+    public function test_pelapor_can_create_multiple_consecutive_reports_with_unique_codes(): void
+    {
+        $pelaporToken = auth('api')->login($this->pelapor);
+
+        $codes = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $response = $this->withHeader('Authorization', "Bearer {$pelaporToken}")
+                ->postJson('/api/reports', [
+                    'media_type_id' => $this->mediaType->id,
+                    'submit' => false,
+                    'answers' => [
+                        [
+                            'question_id' => $this->question1->id,
+                            'answer_value' => "Media Banjar Online {$i}",
+                            'answer_type' => 'text',
+                        ],
+                    ],
+                ]);
+
+            $response->assertStatus(201);
+            $code = $response->json('report.report_code');
+            $this->assertNotNull($code);
+            $this->assertNotContains($code, $codes);
+            $codes[] = $code;
+        }
+
+        $this->assertCount(5, array_unique($codes));
+    }
 }

@@ -165,21 +165,35 @@ class ReportService
         return ltrim($value, '/');
     }
 
-    private function generateReportCode(MediaType $mediaType): string
+    public function generateReportCode(MediaType $mediaType): string
     {
-        for ($attempt = 0; $attempt < 10; $attempt++) {
-            $count = Report::where('media_type_id', $mediaType->id)
-                ->whereNotNull('report_code')
-                ->count();
+        $prefix = $mediaType->code ?: strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $mediaType->name) ?: 'MED', 0, 2));
 
-            $code = $mediaType->code . '-' . str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+        $existingCodes = Report::where('media_type_id', $mediaType->id)
+            ->whereNotNull('report_code')
+            ->pluck('report_code');
+
+        $maxNumber = 0;
+        foreach ($existingCodes as $c) {
+            if (preg_match('/-(\d+)$/', (string) $c, $matches)) {
+                $num = (int) $matches[1];
+                if ($num > $maxNumber) {
+                    $maxNumber = $num;
+                }
+            }
+        }
+
+        $baseNumber = max($maxNumber, $existingCodes->count());
+
+        for ($attempt = 1; $attempt <= 200; $attempt++) {
+            $code = $prefix . '-' . str_pad((string) ($baseNumber + $attempt), 3, '0', STR_PAD_LEFT);
 
             if (!Report::where('report_code', $code)->exists()) {
                 return $code;
             }
         }
 
-        throw new \Exception('Gagal membuat kode laporan.');
+        return $prefix . '-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
     }
 
     private function saveAnswers(Report $report, array $answers): void
