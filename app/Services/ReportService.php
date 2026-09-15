@@ -156,6 +156,8 @@ class ReportService
         }
 
         $value = ltrim((string) $value, '/');
+        $value = str_replace(['\\', '../', '..'], '/', (string) $value);
+        $value = ltrim($value, '/');
         if (str_starts_with($value, 'storage/')) {
             $value = substr($value, 8);
         }

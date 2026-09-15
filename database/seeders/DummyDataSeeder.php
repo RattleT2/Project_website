@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\ReportService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DummyDataSeeder extends Seeder
@@ -127,6 +128,7 @@ class DummyDataSeeder extends Seeder
                 $mediaTypeId,
                 $mediaNames[$mediaTypeId],
                 $mediaNames[$typeName]
+                $mediaNames[$typeName] ?? ['Media Banjar']
             );
 
             $report = $service->createReport($users[$userIndex]->id, [
@@ -156,6 +158,9 @@ class DummyDataSeeder extends Seeder
             return $q->media_type_id === null || $q->media_type_id === $mediaTypeId;
         });
 
+        // Konten PDF minimal yang valid
+        $dummyPdfContent = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Dokumen Dummy Laporan Media) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000216 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n310\n%%EOF";
+
         foreach ($applicable as $question) {
             $text = strtolower($question->question_text);
 
@@ -172,9 +177,15 @@ class DummyDataSeeder extends Seeder
                     'answer_type' => 'text',
                 ];
             } elseif (str_contains($text, 'upload')) {
+                $filePath = "dummy/dokumen-q{$question->id}.pdf";
+                if (!Storage::disk('public')->exists($filePath)) {
+                    Storage::disk('public')->put($filePath, $dummyPdfContent);
+                }
+
                 $answers[] = [
                     'question_id' => $question->id,
                     'answer_value' => "dummy/dokumen-q{$question->id}.pdf",
+                    'answer_value' => $filePath,
                     'answer_type' => 'file',
                 ];
             } elseif (str_contains($text, 'link')) {

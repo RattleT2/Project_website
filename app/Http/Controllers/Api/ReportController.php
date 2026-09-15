@@ -219,6 +219,29 @@ class ReportController extends Controller
         ]);
 
         $filePath = $request->input('file_path');
+        $filePath = $this->reportService->cleanFilePath($request->input('file_path'));
+        $user = auth('api')->user();
+
+        // Validasi format path harus berada di direktori reports/questions/
+        if (!$filePath || !str_starts_with($filePath, 'reports/questions/')) {
+            return response()->json([
+                'message' => 'Path file tidak valid.',
+            ], 422);
+        }
+
+        // Cek jika file ini terikat dengan laporan milik user lain
+        $isUsedByOtherUser = ReportAnswer::where('answer_value', $filePath)
+            ->whereHas('report', function ($query) use ($user) {
+                $query->where('user_id', '!=', $user->id);
+            })
+            ->exists();
+
+        if ($isUsedByOtherUser) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki izin untuk menghapus file ini.',
+            ], 403);
+        }
+
         $this->reportService->deleteFile($filePath);
 
         return response()->json([
