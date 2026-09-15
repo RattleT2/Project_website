@@ -6,6 +6,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\MediaType;
 use App\Models\Report;
 use App\Models\ReportAnswer;
+use App\Models\TemporaryUpload;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -132,9 +133,22 @@ class ReportService
         }
     }
 
-    public function uploadFile(UploadedFile $file, int $questionId): string
+    public function uploadFile(UploadedFile $file, int $questionId, ?int $userId = null): string
     {
-        return $file->store("reports/questions/{$questionId}", self::ATTACHMENT_DISK);
+        $path = $file->store("reports/questions/{$questionId}", self::ATTACHMENT_DISK);
+
+        $userId = $userId ?? auth('api')->id();
+        if ($userId) {
+            TemporaryUpload::create([
+                'user_id' => $userId,
+                'question_id' => $questionId,
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(),
+                'expires_at' => now()->addHours(24),
+            ]);
+        }
+
+        return $path;
     }
 
     public function deleteFile(?string $path): void
@@ -144,6 +158,7 @@ class ReportService
             if ($clean && Storage::disk(self::ATTACHMENT_DISK)->exists($clean)) {
                 Storage::disk(self::ATTACHMENT_DISK)->delete($clean);
             }
+            TemporaryUpload::where('file_path', $clean)->delete();
         }
     }
 
@@ -205,6 +220,8 @@ class ReportService
             ->pluck('id')
             ->flip();
 
+        $currentUser = auth('api')->user();
+
         foreach ($answers as $answer) {
             $questionId = $answer['question_id'] ?? null;
             if (!$questionId) {
@@ -221,20 +238,42 @@ class ReportService
             $value = $answer['answer_value'] ?? null;
             $type = $answer['answer_type'] ?? 'text';
 
-            if ($type === 'file') {
-                $value = $this->cleanFilePath($value);
-
-                // Validasi: Jika tipe file diisi, pastikan file fisik tersimpan di disk private (local)
-                if ($value && !Storage::disk(self::ATTACHMENT_DISK)->exists($value)) {
-                    throw ValidationException::withMessages([
-                        'answers' => ["File lampiran untuk pertanyaan ID {$questionId} tidak ditemukan di server."],
-                    ]);
-                }
-            }
-
             $existingAnswer = ReportAnswer::where('report_id', $report->id)
                 ->where('question_id', $questionId)
                 ->first();
+
+            if ($type === 'file') {
+                $value = $this->cleanFilePath($value);
+
+                if ($value) {
+                    // Validasi 1: Pastikan file fisik tersimpan di disk private (local)
+                    if (!Storage::disk(self::ATTACHMENT_DISK)->exists($value)) {
+                        throw ValidationException::withMessages([
+                            'answers' => ["File lampiran untuk pertanyaan ID {$questionId} tidak ditemukan di server."],
+                        ]);
+                    }
+
+                    // Validasi 2: Verifikasi kepemilikan file (ownership)
+                    $isAlreadyOwnedByThisReport = $existingAnswer && $existingAnswer->answer_value === $value;
+                    $isUploadedByReportOwner = TemporaryUpload::where('file_path', $value)
+                        ->where('question_id', $questionId)
+                        ->where(function ($q) use ($report) {
+                            $q->where('user_id', $report->user_id)
+                              ->orWhere('user_id', auth('api')->id());
+                        })
+                        ->exists();
+                    $isSeederOrSelfReportFile = str_starts_with($value, 'dummy/')
+                        || ReportAnswer::where('answer_value', $value)
+                            ->whereHas('report', fn($rq) => $rq->where('user_id', $report->user_id))
+                            ->exists();
+
+                    if (!$isAlreadyOwnedByThisReport && !$isUploadedByReportOwner && !$isSeederOrSelfReportFile && $currentUser?->role !== 'admin') {
+                        throw ValidationException::withMessages([
+                            'answers' => ["File lampiran untuk pertanyaan ID {$questionId} tidak valid atau bukan milik Anda."],
+                        ]);
+                    }
+                }
+            }
 
             // Jika nilai jawaban dikirim null atau kosong ("")
             if ($value === null || trim((string) $value) === '') {
@@ -265,6 +304,10 @@ class ReportService
                     'answer_type' => $type,
                     'score_earned' => 0,
                 ]);
+            }
+
+            if ($type === 'file' && $value) {
+                TemporaryUpload::where('file_path', $value)->delete();
             }
         }
 

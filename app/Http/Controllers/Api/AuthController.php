@@ -196,7 +196,10 @@ class AuthController extends Controller
             'captcha' => ['required', new \App\Rules\CaptchaRule],
         ]);
 
-        Password::sendResetLink($request->only('email'));
+        $user = User::where('email', $request->email)->first();
+        if ($user && $user->status === 'aktif') {
+            Password::sendResetLink($request->only('email'));
+        }
 
         return response()->json([
             'message' => 'Jika email terdaftar, tautan reset password telah dikirim.',
@@ -210,6 +213,13 @@ class AuthController extends Controller
             'email' => 'required|email',
             'password' => 'required|min:8|confirmed',
         ]);
+
+        $user = User::where('email', $request->email)->first();
+        if ($user && $user->status !== 'aktif') {
+            return response()->json([
+                'message' => 'Akun non-aktif. Hubungi admin.',
+            ], 403);
+        }
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),

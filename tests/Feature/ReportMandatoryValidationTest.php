@@ -140,6 +140,11 @@ class ReportMandatoryValidationTest extends TestCase
     {
         Storage::fake('local');
         Storage::disk('local')->put('reports/questions/2/akta.pdf', '%PDF-1.4 dummy content');
+        \App\Models\TemporaryUpload::create([
+            'user_id' => $this->pelapor->id,
+            'question_id' => $this->question2->id,
+            'file_path' => 'reports/questions/2/akta.pdf',
+        ]);
 
         $pelaporToken = auth('api')->login($this->pelapor);
 

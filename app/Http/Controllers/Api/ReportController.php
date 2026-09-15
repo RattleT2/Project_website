@@ -241,6 +241,18 @@ class ReportController extends Controller
             ], 403);
         }
 
+        // Cek jika file ini tercatat di temporary_uploads milik user lain
+        $tempUpload = \App\Models\TemporaryUpload::where('file_path', $filePath)->first();
+        if ($tempUpload && $tempUpload->user_id !== $user->id && $user->role !== 'admin') {
+            return response()->json([
+                'message' => 'Anda tidak memiliki izin untuk menghapus file ini.',
+            ], 403);
+        }
+
+        if ($tempUpload) {
+            $tempUpload->delete();
+        }
+
         $this->reportService->deleteFile($filePath);
 
         return response()->json([

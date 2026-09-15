@@ -317,7 +317,71 @@ class SecurityHardeningTest extends TestCase
             ]);
         $res2->assertStatus(422);
     }
+
+    public function test_user_cannot_submit_file_uploaded_by_another_user(): void
+    {
+        $otherPelapor = User::factory()->create([
+            'role' => 'pelapor',
+            'status' => 'aktif',
+        ]);
+
+        // 1. Other pelapor uploads a file to temporary storage
+        $otherToken = auth('api')->login($otherPelapor);
+        $file = UploadedFile::fake()->create('other_secret.pdf', 100, 'application/pdf');
+        $uploadRes = $this->withHeader('Authorization', "Bearer $otherToken")
+            ->postJson("/api/reports/upload/{$this->globalQuestion->id}", [
+                'file' => $file,
+            ]);
+        $filePath = $uploadRes->json('file_path');
+
+        // 2. Pelapor attempts to steal/reference other pelapor's temporary upload path in their report
+        $pelaporToken = auth('api')->login($this->activePelapor);
+        $reportRes = $this->withHeader('Authorization', "Bearer $pelaporToken")
+            ->postJson('/api/reports', [
+                'media_type_id' => $this->mediaOnline->id,
+                'answers' => [
+                    [
+                        'question_id' => $this->globalQuestion->id,
+                        'answer_value' => $filePath,
+                        'answer_type' => 'file',
+                    ],
+                ],
+            ]);
+
+        $reportRes->assertStatus(422)
+            ->assertJsonValidationErrors(['answers']);
+    }
+
+    public function test_reset_password_blocked_for_inactive_account(): void
+    {
+        $token = \Illuminate\Support\Facades\Password::createToken($this->inactivePelapor);
+
+        $response = $this->postJson('/api/auth/reset-password', [
+            'email' => $this->inactivePelapor->email,
+            'token' => $token,
+            'password' => 'newpassword123',
+            'password_confirmation' => 'newpassword123',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('message', 'Akun non-aktif. Hubungi admin.');
+    }
+
+    public function test_forgot_password_does_not_send_mail_for_inactive_account(): void
+    {
+        config(['captcha.disable' => true]);
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $response = $this->postJson('/api/auth/forgot-password', [
+            'email' => $this->inactivePelapor->email,
+            'captcha' => 'ABCDE',
+        ]);
+
+        $response->assertStatus(200);
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+    }
 }
+
 
 
 
