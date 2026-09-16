@@ -39,11 +39,13 @@ class UserProfileTest extends TestCase
 
         $file = UploadedFile::fake()->image('profile.jpg', 200, 200);
 
-        $response = $this->withHeader('Authorization', "Bearer $token")
-            ->postJson('/api/auth/me', [
-                'name' => 'New Name',
-                'avatar' => $file,
-            ]);
+        $response = $this->withHeaders([
+            'Authorization' => "Bearer $token",
+            'Accept' => 'application/json',
+        ])->post('/api/auth/me', [
+            'name' => 'New Name',
+            'avatar' => $file,
+        ]);
 
         $response->assertStatus(200)
             ->assertJsonPath('user.name', 'New Name');

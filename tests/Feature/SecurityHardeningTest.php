@@ -195,10 +195,12 @@ class SecurityHardeningTest extends TestCase
         $token = auth('api')->login($this->activePelapor);
         $file = UploadedFile::fake()->image('new_avatar.jpg', 150, 150);
 
-        $response = $this->withHeader('Authorization', "Bearer $token")
-            ->postJson('/api/auth/me', [
-                'avatar' => $file,
-            ]);
+        $response = $this->withHeaders([
+            'Authorization' => "Bearer $token",
+            'Accept' => 'application/json',
+        ])->post('/api/auth/me', [
+            'avatar' => $file,
+        ]);
 
         $response->assertStatus(200);
         $this->activePelapor->refresh();
