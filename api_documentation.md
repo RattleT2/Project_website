@@ -1008,8 +1008,43 @@ Authorization: Bearer <token>
 
 #### List Semua User Pelapor
 ```
-GET /api/admin/users
+GET /api/admin/users?search=budi&status=aktif&page=1&per_page=20
 Authorization: Bearer <token>
+```
+| Query Param | Type | Keterangan |
+|---|---|---|
+| `search` | string | Cari berdasarkan nama, email, atau ID user |
+| `status` | string | Filter status user (`aktif` / `non-aktif`) |
+| `page` | int | Nomor halaman pagination (default: 1) |
+| `per_page` | int | Jumlah data per halaman (default: 20, max: 100) |
+
+**Response 200 (Pagination):**
+```json
+{
+  "current_page": 1,
+  "data": [
+    {
+      "id": 16,
+      "name": "Budi Santoso",
+      "email": "budi@mediabanjar.com",
+      "avatar": "avatars/sample.jpg",
+      "avatar_url": "http://localhost:8000/storage/avatars/sample.jpg",
+      "status": "aktif",
+      "reports_count": 3,
+      "created_at": "2026-09-16 10:00:00"
+    }
+  ],
+  "first_page_url": "http://localhost/api/admin/users?page=1",
+  "from": 1,
+  "last_page": 1,
+  "last_page_url": "http://localhost/api/admin/users?page=1",
+  "next_page_url": null,
+  "path": "http://localhost/api/admin/users",
+  "per_page": 20,
+  "prev_page_url": null,
+  "to": 1,
+  "total": 1
+}
 ```
 
 #### Detail User

@@ -6,16 +6,31 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateUserStatusRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $perPage = min((int) request()->input('per_page', 20), 100);
+        $perPage = min((int) $request->input('per_page', 20), 100);
 
         $query = User::where('role', 'pelapor')
-            ->withCount('reports')
-            ->orderBy('created_at', 'desc');
+            ->withCount('reports');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        $query->orderBy('created_at', 'desc');
 
         $users = $query->paginate($perPage);
 

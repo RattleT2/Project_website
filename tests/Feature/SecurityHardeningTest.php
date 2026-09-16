@@ -380,7 +380,34 @@ class SecurityHardeningTest extends TestCase
         $response->assertStatus(200);
         \Illuminate\Support\Facades\Mail::assertNothingSent();
     }
+
+    public function test_admin_can_search_and_filter_users(): void
+    {
+        $adminToken = auth('api')->login($this->admin);
+
+        // 1. Search by name
+        $searchRes = $this->withHeader('Authorization', "Bearer $adminToken")
+            ->getJson('/api/admin/users?search=Pelapor Aktif');
+        $searchRes->assertStatus(200)
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.name', 'Pelapor Aktif');
+
+        // 2. Filter by status 'aktif'
+        $statusActiveRes = $this->withHeader('Authorization', "Bearer $adminToken")
+            ->getJson('/api/admin/users?status=aktif');
+        $statusActiveRes->assertStatus(200)
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.status', 'aktif');
+
+        // 3. Filter by status 'non-aktif'
+        $statusInactiveRes = $this->withHeader('Authorization', "Bearer $adminToken")
+            ->getJson('/api/admin/users?status=non-aktif');
+        $statusInactiveRes->assertStatus(200)
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.name', 'Pelapor Non-Aktif');
+    }
 }
+
 
 
 
