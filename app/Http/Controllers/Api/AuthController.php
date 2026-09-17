@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -259,6 +260,11 @@ class AuthController extends Controller
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
         } catch (\Exception $e) {
+            Log::error('Google OAuth callback error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_all' => $request->all(),
+            ]);
+
             return response()->json([
                 'message' => 'Gagal melakukan otentikasi dengan Google. Token/kode tidak valid atau sudah kadaluwarsa.',
             ], 400);
