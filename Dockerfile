@@ -39,8 +39,12 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         dom \
         xml
 
-# Set PHP memory limit
-RUN echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini
+# Set PHP memory limit & upload sizes
+RUN { \
+        echo "memory_limit=256M"; \
+        echo "upload_max_filesize=20M"; \
+        echo "post_max_size=25M"; \
+    } > /usr/local/etc/php/conf.d/uploads.ini
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

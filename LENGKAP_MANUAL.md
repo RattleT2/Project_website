@@ -12,6 +12,7 @@ Dokumen ini berisi panduan lengkap dari tahap pengembangan hingga alur pemindaha
 5. [Daftar Akun Default & Pengelolaan Seeder](#5-daftar-akun-default--seeder)
 6. [Struktur Folder & Referensi API Endpoint](#6-referensi-api-endpoint--kategori)
 7. [Panduan Pemeliharaan, Backup & Troubleshooting](#7-pemeliharaan-backup--troubleshooting)
+8. [Checklist Pengaturan Eksternal di Luar Folder Proyek (Server, DNS, Google & Docker)](#8-checklist-pengaturan-eksternal-di-luar-folder-proyek)
 
 ---
 
@@ -435,3 +436,95 @@ php artisan view:cache
 # Manual MySQL dump
 mysqldump -u laporan_user -p laporan_media > backup_laporan_$(date +%Y%m%d).sql
 ```
+
+---
+
+## 8. Checklist Pengaturan Eksternal di Luar Folder Proyek
+
+Bagian ini merangkum hal-hal krusial yang **wajib disetting di luar folder source code** (di level server Linux, panel domain, Google Cloud Console, dan Docker image build) agar sistem tidak mengalami kendala saat go-live di server produksi:
+
+### 1. Panel Domain & DNS (Kominfo / Registrar)
+Pastikan DNS Record sudah mengarah ke IP Publik VPS Server:
+- [ ] **A Record Frontend**: `laporanmedia.banjarkab.go.id` $\rightarrow$ `IP_SERVER_VPS`
+- [ ] **A Record Backend API**: `api-laporanmedia.banjarkab.go.id` $\rightarrow$ `IP_SERVER_VPS`
+*(Tunggu propagasi DNS selesai sebelum memasang sertifikat SSL)*.
+
+---
+
+### 2. Google Cloud Console (OAuth 2.0 & Consent Screen)
+- [ ] **Authorized JavaScript origins**:
+  - `https://laporanmedia.banjarkab.go.id`
+- [ ] **Authorized redirect URIs**:
+  - `https://laporanmedia.banjarkab.go.id/auth/google/callback`
+- [ ] **Publishing Status (Sangat Penting!)**:
+  - Buka menu **APIs & Services** $\rightarrow$ **OAuth consent screen**.
+  - Ubah status dari **Testing** menjadi **In Production (Publish App)** agar semua akun Google pengguna umum bisa login tanpa terbatasi kuota/daftar *Test Users*.
+
+---
+
+### 3. Firewall Server (UFW / Cloud Security Group)
+Buka hanya port yang diperlukan untuk publik, dan amankan port internal:
+```bash
+sudo ufw allow OpenSSH       # Port 22 (SSH)
+sudo ufw allow 80/tcp        # Port 80 (HTTP untuk Nginx & Certbot)
+sudo ufw allow 443/tcp       # Port 443 (HTTPS)
+sudo ufw enable
+```
+> **Catatan:** Port `3000` (Next.js), `8000` (Laravel), dan `3306` (MySQL) **JANGAN dibuka di firewall publik**. Semua akses browser diarahkan melewati Port 80/443 Nginx Reverse Proxy.
+
+---
+
+### 4. Konfigurasi Nginx Host & Batas Ukuran Upload File
+Agar upload file PDF bukti lampiran (hingga 5 MB) dan foto profil tidak terblokir dengan error `413 Request Entity Too Large`, pastikan directive `client_max_body_size` dipasang pada Nginx Host:
+```nginx
+# Di dalam blok server {} Nginx Host (/etc/nginx/sites-available/laporan-media-proxy)
+client_max_body_size 25M;
+```
+
+---
+
+### 5. Sertifikat SSL HTTPS (Let's Encrypt / Certbot)
+Google OAuth, cookie keamanan, dan fetch API lintas domain **wajib menggunakan HTTPS**:
+```bash
+sudo certbot --nginx -d laporanmedia.banjarkab.go.id -d api-laporanmedia.banjarkab.go.id
+```
+Sertifikat akan diperbarui otomatis oleh daemon `certbot.timer`.
+
+---
+
+### 6. Variabel Environment Saat Build Image Docker Frontend (Next.js)
+Pada Next.js, variabel `NEXT_PUBLIC_*` **ditanam langsung (inlined) ke dalam file JavaScript saat `docker build`**.
+- [ ] Jangan me-repack frontend dengan URL `localhost:8000` untuk dipakai di server produksi.
+- [ ] Saat me-build image Docker frontend untuk produksi, pasang environment variabel domain produksi:
+  ```bash
+  docker build \
+    --build-arg NEXT_PUBLIC_API_URL=https://api-laporanmedia.banjarkab.go.id/api \
+    --build-arg NEXT_PUBLIC_APP_URL=https://laporanmedia.banjarkab.go.id \
+    -t username/laporan-media-frontend:latest .
+  ```
+- [ ] Pastikan `next.config.js` di frontend mengizinkan domain upload gambar backend:
+  ```js
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'api-laporanmedia.banjarkab.go.id', pathname: '/storage/**' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' }
+    ]
+  }
+  ```
+
+---
+
+### 7. Persistensi Folder Storage & File Upload (Docker Volume)
+Untuk mencegah hilangnya file PDF lampiran dan avatar saat container di-restart atau di-update, pastikan `docker-compose.yml` me-mount volume direktori storage ke folder host server:
+- `storage/app/public` $\rightarrow$ Menyimpan avatar pengguna (dapat diakses via URL publik).
+- `storage/app/private` $\rightarrow$ Menyimpan dokumen bukti laporan PDF (diproteksi otentikasi JWT).
+- `storage/logs` $\rightarrow$ Menyimpan file log sistem Laravel.
+
+---
+
+### 8. Kredensial SMTP Email (Notifikasi & Reset Password)
+Jika menggunakan akun Gmail resmi instansi untuk pengiriman email:
+- [ ] Aktifkan **2-Step Verification** pada akun Google Mail pengirim.
+- [ ] Buat **App Password (Sandi Aplikasi)** 16 digit di Google Account Security.
+- [ ] Masukkan sandi 16 digit tersebut ke baris `MAIL_PASSWORD` di file `.env` produksi.
+
