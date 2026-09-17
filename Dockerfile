@@ -39,6 +39,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         dom \
         xml
 
+# Set PHP memory limit
+RUN echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini
 # Set PHP memory limit & upload sizes
 RUN { \
         echo "memory_limit=256M"; \
